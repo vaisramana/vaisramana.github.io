@@ -1,0 +1,20 @@
+<head>
+    <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML" type="text/javascript"></script>
+    <script type="text/x-mathjax-config">
+            MathJax.Hub.Config({
+                    tex2jax: {
+                    skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+                    inlineMath: [['$','$']]
+                    }
+                });
+    </script>
+</head>
+
+## 2.2 如何萃取，特征提取
+目前最常用的语音特征提取方式是filter banks和Mel-Frequency Cepstral Coefficients (MFCCs)。filter banks包含如下步骤
+	- 预加重滤波器
+	- 语音分帧
+	- 短时傅里叶变换STFT
+	- 分频段filter bank
+MFCC包含完整的filter banks操作，在此基础上额外增加了离散余弦变换DCT。
+
