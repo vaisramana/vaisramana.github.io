@@ -1,0 +1,49 @@
+<head>
+    <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML" type="text/javascript"></script>
+    <script type="text/x-mathjax-config">
+            MathJax.Hub.Config({
+                    tex2jax: {
+                    skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+                    inlineMath: [['$','$']]
+                    }
+                });
+    </script>
+</head>
+
+
+
+## 2.3 如何控制风速火候，模型结构
+### 2.3.1 DNN
+google比较早地提出用深度神经网络deep neural networks的方法来实现语音唤醒，称之为Deep KWS。如下图所示，唤醒分为三个步骤，
+  ![deep_kws_struct.png](/assets/nn-struct/deep_kws_struct.png)
+首先对输入语音做特征提取，然后经过DNN网络得到一个三分类的后验概率，三分类分别对应关键字Okey，Google和其他，最后经过后处理得到置信度得分用于唤醒判决。
+
+- 特征提取
+
+出于减少计算量的考量，这里包含了一个VAD检测机制，用一个13维的PLP特征和他们的一阶差分二阶差分通过一个高斯混合模型 GMM得到每帧人声和非人声的后验概率，再通过平滑和阈值判断决定出人声范围。在人声范围内，基于25ms窗长和10ms窗移得到40维FBank特征。每次输入给模型的特征都在当前帧基础上前后拼接了一部分状态，权衡计算量，时延和精度，Deep KWS在实现中向前拼接了10帧，向后拼接了30帧。
+
+- 神经网络
+
+网络结构部分用的是标准的全连接网络，包含$k$层隐层，每层隐层包含$n$个节点和RELU作为激活函数，最后一层通过softmax得到每个标签的后验概率。Deep KWS的标签只用来表示完整词，即完整包含整个激活词作为一个标签，这些标签来自于一个50M LVCSR大模型的强制对齐。相比于非完整词sub-word标签，完整词标签的好处是，
+	- 减少最后一层的网络参数
+	- 使得后处理更简单
+	- 更好性能
+训练中采用交叉熵作为损失函数，同时提到，可以复用其他语音识别网络结构来初始化隐层，实现迁移学习，避免训练陷入局部最小值从而提高模型性能。
+
+- 后处理判决
+
+得到基于帧的标签后验概率之后，后处理部分将后验概率经过平滑处理，得到唤醒置信度得分。平滑过程是为了消除原始后验概率噪声，假设$p'_{ij}$是原始后验概率$p'_{ij}$平滑之后的结果，平滑窗口为$w_{smooth}$，平滑公式如下
+$$
+p'_{ij}=\frac{1}{j-h_{smooth}+1}\sum_{k=h_{smooth}}^j p_{ik}
+$$
+其中h_{smooth}=max{1,j-w_{smooth}+1}，是平滑窗$w_{smooth}$内的最早帧号索引。
+然后基于平滑之后的后验概率$p'_{ij}$计算得到置信度，在一个滑动窗$w_{max}内$第$j$帧的置信度
+$$
+confidence=\sqrt[n-1]{\prod_{i=1}^{n-1}\max \limits_{h_{max}<k<j}p'_{ik}}
+$$
+其中h_{max}=max{1,j-w_{max}+1}，是平滑窗$w_{max}$内的最早帧号索引。
+计算得到的置信度和预定义的阈值比较，做出唤醒判决。Deep KWS中使用的$w_{smooth}=30$和$w_{max}=100$，能得到相对较好的性能。
+
+
+
+
