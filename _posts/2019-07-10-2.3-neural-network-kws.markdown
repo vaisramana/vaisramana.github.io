@@ -77,13 +77,32 @@ google在2015年提出基于CNN的KWS模型，典型的卷积网络结构包含�
 - 在必须减少模型计算量情况下，增大卷积核滑动步长优于增加pooling。
 - 在时域滑动$$s>1$$都会影响性能，而卷积核步长$$s=1$$后面接pooling，可以在降采样之前针对相邻帧关系更好的建模，比直接卷积核步长$$s>1$$更有效。
 
-### 2.3.3 RNN
-CNN建模的一个缺陷是，一般尺寸的卷积核不足以表达整个唤醒词上下文，而RNN正好擅长基于上下文建模。RNN的缺点在于学不到连续频谱的空间关系，而CNN正好擅长基于空间关系建模。因此ASR任务中出现将CNN和RNN结合的CRNN模型结构，并以CTC作为loss函数，baidu将这个模型结构应用在唤醒任务上，并大幅缩减了模型参数量。
+### 2.3.3 CRNN
+CNN建模的一个缺陷是，一般尺寸的卷积核不足以表达整个唤醒词上下文，而RNN正好擅长基于上下文建模。RNN的缺点在于学不到连续频谱的空间关系，而CNN正好擅长基于空间关系建模。因此语音任务中出现将CNN和RNN结合的CRNN模型结构，并以CTC作为loss函数，baidu将这个模型结构应用在唤醒任务上，并大幅缩减了模型参数量。CRNN的网络结构如下图所示
+  ![crnn_kws_struct.png](../assets/nn-struct/crnn_kws_struct.png)
+出于减少复杂度的考量，训练中的标签指示当前帧是否包含唤醒词，语音识别任务中的CTC损失函数被替换成开销更小的CE损失函数。从CTC损失函数到CE损失函数，给训练任务带来的重要变化就是训练样本需要精确严格的对齐，需要由一个更大的识别模型预先得到唤醒词在训练样本中的出现和结束时间点。
+增大卷积核数目和增大RNN节点数目可以显著提高模型性能，RNN层选择GRU比LSTM计算量更小而且性能更好，但是增加RNN层数对提高性能几乎没有帮助。
 
+### 2.3.4 DSCNN
+机器视觉任务中，深度可分离卷积结构(depthwise separable convolution DSCNN)在许多领域逐渐替代标准三维卷积。DSCNN相比于普通CNN，能够显著降低参数量和计算量。DSCNN最早在google的Xception和MobileNet中提出，核心思想是将一个完整的卷积运算分解为两步进行，分别为Depthwise Convolution与Pointwise Convolution。
+  ![dscnn_algo.png](../assets/nn-struct/dscnn_algo.png)
+假设一个卷积输入尺寸是$$D_F×D_F×M$$，输出尺寸是$$D_F×D_F×N$$，$$D_F$$ 指特征的长和宽，那么
 
+- 普通卷积核$$D_K×D_K$$
+输出一共有$$D_F×D_F×N$$个点，对于输出的每一个点，都要做$$D_K×D_K×M$$次乘法，再把个$$M$$个通道叠加，总计算量是$$D_K×D_K×M×D_F×D_F×N$$
+- DSCNN
+	- Depthwise convolution
+	针对每个输入通道采用不同的卷积核，就是说一个卷积核对应一个输入通道，卷积核一共有$$D_K×D_K×M$$，输出一通道的乘法次数是$$D_K×D_K×D_F×D_F$$，输出$$N$$通道的计算量是$$D_K×D_K×D_F×D_F×M$$
+	- pointwise convolution
+	普通卷积，只是卷积核的尺寸为$$1×1$$，卷积核数目是是上一层的输出通道数。所以这里的卷积运算会将上一步的输出在深度方向上进行加权组合，生成新的Feature map。计算量维$$M×D_F×D_F×N$$
 
+比较DSCNN和标准卷积的计算量
+$$
+\frac{(D_K×D_K×M×D_F×D_F+M×D_F×D_F×N)}{(D_K×D_K×M×D_F×D_F×N)}=\frac{1}{N}+\frac{1}{D_K^2}
+$$
 
+一般情况下，$$N$$较大，$$\frac{1}{N}$$ 可以忽略，那么比如$$3×3$$的卷积核，DSCNN可以降低9倍计算量。
 
-
+  ![dscnn_kws_struct.png](../assets/nn-struct/dscnn_kws_struct.png)
 
 
