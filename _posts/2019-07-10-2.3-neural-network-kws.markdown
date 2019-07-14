@@ -110,7 +110,7 @@ $$
 
 DSCNN应用于唤醒任务的模型结构如上图所示，在DSCNN层之后加一层pooling和全连接层，用于减少参数量并提供全局连接。
 
-### 2.3.45 Sub-band CNN
+### 2.3.5 Sub-band CNN
 在特征提取章节我们谈到，人耳对不同频带敏感度不一样，于是就有基于不同频谱子带用卷积提取特征的方法。
   ![sb_cnn_kws_struct.png](/assets/nn-struct/sb_cnn_kws_struct.png)
 
@@ -125,7 +125,7 @@ DSCNN应用于唤醒任务的模型结构如上图所示，在DSCNN层之后加�
 
 实验结果显示，得益于卷积层2感受野的扩大，第一种沿着通道维度组合性能最优。通常我们需要堆叠多层卷积来增大感受野，而Sub-band CNN提供一种更低成本的感受野扩大方式，适合唤醒任务低开销的特点。
 
-### 2.3.5 Attention
+### 2.3.6 Attention
 以上介绍的方法虽然可以把模型结构做到很小，但是需要一个预先训练的更大声学模型来完成帧级别的对齐工作。基于attention的模型可以做到完整的端到端训练，也就是不需要预先对齐。
   ![attention_kws_struct.png](/assets/nn-struct/attention_kws_struct.png)
 
