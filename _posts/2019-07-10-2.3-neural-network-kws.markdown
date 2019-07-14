@@ -18,6 +18,7 @@
 ### 2.3.1 DNN
 google比较早地在2014年提出用深度神经网络deep neural networks的方法来实现语音唤醒，称之为Deep KWS。如下图所示，唤醒分为三个步骤，
   ![deep_kws_struct.png](/assets/nn-struct/deep_kws_struct.png)
+
 首先对输入语音做特征提取，然后经过DNN网络得到一个三分类的后验概率，三分类分别对应关键字Okey，Google和其他，最后经过后处理得到置信度得分用于唤醒判决。
 
 - 特征提取
@@ -58,6 +59,7 @@ $$
 
 google在2015年提出基于CNN的KWS模型，典型的卷积网络结构包含一层卷积层加一层max池化pooling层。
   ![cnn_kws_struct.png](/assets/nn-struct/cnn_kws_struct.png)
+
 这里输入特征$$V$$的时域维度是$$t$$，频域维度是$$f$$，经过一个$$n$$个$$(m\times r)$$的卷积核，同时卷积步长是$$(s,v)$$，输出$$n$$个$$(\frac{(t-m+1)}{s}\times \frac{(f-r+1)}{v})$$的feature map。卷积之后接一个max池化层提高稳定性，这里pooling降采样系数是$$(p\times q)$$，那么最终输出feature map是$$(\frac{(t-m+1)}{s\dot p}\times \frac{(f-r+1)}{v\dot q})$$。
 这里给出一个250K参数量的模型，包含2层卷积结构，一层线性低阶，一层全连接层，具体参数如下
 
@@ -80,12 +82,14 @@ google在2015年提出基于CNN的KWS模型，典型的卷积网络结构包含�
 ### 2.3.3 CRNN
 CNN建模的一个缺陷是，一般尺寸的卷积核不足以表达整个唤醒词上下文，而RNN正好擅长基于上下文建模。RNN的缺点在于学不到连续频谱的空间关系，而CNN正好擅长基于空间关系建模。因此语音任务中出现将CNN和RNN结合的CRNN模型结构，并以CTC作为loss函数，baidu将这个模型结构应用在唤醒任务上，并大幅缩减了模型参数量。CRNN的网络结构如下图所示
   ![crnn_kws_struct.png](/assets/nn-struct/crnn_kws_struct.png)
+
 出于减少复杂度的考量，训练中的标签指示当前帧是否包含唤醒词，语音识别任务中的CTC损失函数被替换成开销更小的CE损失函数。从CTC损失函数到CE损失函数，给训练任务带来的重要变化就是训练样本需要精确严格的对齐，需要由一个更大的识别模型预先得到唤醒词在训练样本中的出现和结束时间点。
 增大卷积核数目和增大RNN节点数目可以显著提高模型性能，RNN层选择GRU比LSTM计算量更小而且性能更好，但是增加RNN层数对提高性能几乎没有帮助。
 
 ### 2.3.4 DSCNN
 机器视觉任务中，深度可分离卷积结构(depthwise separable convolution DSCNN)在许多领域逐渐替代标准三维卷积。DSCNN相比于普通CNN，能够显著降低参数量和计算量。DSCNN最早在google的Xception和MobileNet中提出，核心思想是将一个完整的卷积运算分解为两步进行，分别为Depthwise Convolution与Pointwise Convolution。
   ![dscnn_algo.png](/assets/nn-struct/dscnn_algo.png)
+
 假设一个卷积输入尺寸是$$D_F×D_F×M$$，输出尺寸是$$D_F×D_F×N$$，$$D_F$$ 指特征的长和宽，那么
 
 - 普通卷积核$$D_K×D_K$$
@@ -103,11 +107,13 @@ $$
 
 一般情况下，$$N$$较大，$$\frac{1}{N}$$ 可以忽略，那么比如$$3×3$$的卷积核，DSCNN可以降低9倍计算量。
   ![dscnn_kws_struct.png](/assets/nn-struct/dscnn_kws_struct.png)
+
 DSCNN应用于唤醒任务的模型结构如上图所示，在DSCNN层之后加一层pooling和全连接层，用于减少参数量并提供全局连接。
 
-### 2.3.4 Sub-band CNN
+### 2.3.45 Sub-band CNN
 在特征提取章节我们谈到，人耳对不同频带敏感度不一样，于是就有基于不同频谱子带用卷积提取特征的方法。
   ![sb_cnn_kws_struct.png](/assets/nn-struct/sb_cnn_kws_struct.png)
+
 首先输入特征被分成$$B$$个子带，图中$$B=3$$，每个子带应用一组卷积核，基于子带提取出的特征合并，作为下一层卷积层的输入，最后经过一层全连接层输出预测概率。频谱子带如何划分和子带提取特征如何再组合是子带CNN的重点
 - 子带划分
 子带划分有两种选择，子带之间重叠或者不重叠。子带不重叠可能引入边界频点信息丢失，而子带重叠方法又会带来额外的计算量。
@@ -118,4 +124,52 @@ DSCNN应用于唤醒任务的模型结构如上图所示，在DSCNN层之后加�
 	- 各子带独立经过卷积层1提取特征，沿着频率维度组合，再经过卷积层2和全连接层
 
 实验结果显示，得益于卷积层2感受野的扩大，第一种沿着通道维度组合性能最优。通常我们需要堆叠多层卷积来增大感受野，而Sub-band CNN提供一种更低成本的感受野扩大方式，适合唤醒任务低开销的特点。
+
+### 2.3.5 Attention
+以上介绍的方法虽然可以把模型结构做到很小，但是需要一个预先训练的更大声学模型来完成帧级别的对齐工作。基于attention的模型可以做到完整的端到端训练，也就是不需要预先对齐。
+  ![attention_kws_struct.png](/assets/nn-struct/attention_kws_struct.png)
+
+模型结构由两部分组成，Encoder和Attention。Encoder的作用是将声学特征转换到更高维的表达，Encoder的结构可以由不同网络类型组成，比如LSTM，GRU或CRNN。假设输入语音特征是$${\bf{x}}=( x_1, ..., x_T)$$，经过encoder之后得到高维表达$${\bf{h}}=( h_1, ..., h_T)$$，
+
+$$
+{\bf{h}}=Encoder({\bf{x}})
+$$
+
+Attention基于Encoder生成的高维表达$$\bf{h}$$，得到一组归一化权重
+
+$$
+\alpha_t=Attend(h_t)
+$$
+
+将这组权重应用于高维表达$${\bf{h}}$$，得到一组定长向量$${\bf{c}}$$
+
+$$
+{\bf{c}}=\sum_{t=1}^T \alpha_th_t
+$$
+
+最后基于这组定长向量，经过前行变换$${\bf{U}}$$和softmax得到概率分布
+
+$$
+p(y)=softmax({\bf{Uc}})
+$$
+
+这里Attention由两种方式
+- Average attention
+不包含可训练参数，相当于$$\bf{h}$$向量取均值
+
+$$
+\alpha_t=\frac{1}{T}
+$$
+
+- Soft attention
+这里$$\alpha_t$$不再固定，而是通过训练得到，这种方法相比于取均值方法，在很多其他应用attention的任务中被证明更有效。
+
+$$
+e_t=v^Ttanh({\bf{W}}h_t+{\bf{b}})
+\\ \alpha_t=\frac{exp(e_t)}{\sum_{j=1}^T exp(e_j)}
+$$
+
+
+
+
 
