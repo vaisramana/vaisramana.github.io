@@ -16,17 +16,18 @@
 语音唤醒，或者说关键词检测，是语音识别任务的一个分支，需要从一串语音流里检测出有限个预先定义的激活词或者关键词，而不需要对所有的语音进行识别。这类技术是使能嵌入式设备语音交互能力的基础，可以被应用到各种领域，比如手机，智能音箱，机器人，智能家居，车载设备，可穿戴设备等等。唤醒词预先设定，大部分中文唤醒词是四字，音节覆盖越多，音节差异越大，相对唤醒和误唤醒性能越好，也有些技术领先的算法公司可以做到三字或者二字唤醒词。当设备处于休眠状态时，持续拾音持续检测唤醒词，一旦检测到唤醒词，设备从休眠状态切换到工作状态等待后续交互。
 作为一种基础应用，语音唤醒任务主要从两个维度考量
 - 唤醒性能
-唤醒性能主要包括召回率 True Positive Rate和虚警率 False Positive Rate。召回率是指正确识别的正例数据在实际正例数据中的百分比， 也就是正确被唤醒次数占总的应该被唤醒次数的百分比。虚警率是指错误识别的负例数据在实际负例数据中的百分比，也就是不该被唤醒却被唤醒的概率。这两者通常是此消彼长的关系，一个指标提升带来另一指标的下降。根据使用场景的不同，这两者的侧重点也会有所不同。
+唤醒性能主要包括召回率 TPR和虚警率 FPR。召回率是指正确识别的正例数据在实际正例数据中的百分比， 也就是正确被唤醒次数占总的应该被唤醒次数的百分比。虚警率是指错误识别的负例数据在实际负例数据中的百分比，也就是不该被唤醒却被唤醒的概率。这两者通常是此消彼长的关系，一个指标提升带来另一指标的下降。根据使用场景的不同，这两者的侧重点也会有所不同。
 - 复杂度
 复杂度主要体现在计算和内存开销上，因为设备处于持续拾音和持续检测的状态，需要较低的响应时延来保证用户体验，同时由于多数嵌入式设备依赖电池，较低的功耗才能保证合理的待机时间，要求更少的计算和内存开销。
 
-目前常用的系统框架主要有基于隐马尔科夫模型和基于神经网络两种。
+目前常用的系统框架主要有基于HMM隐马尔科夫模型和基于神经网络两种。
 
-- 基于隐马尔科夫模型
+- 基于HMM隐马尔科夫模型[^1]
 这种方法与传统LVCSR（大规模词表语音识别）方法类似，区别在于解码网络的大小。因为不需要识别所有语音，因此解码网络不需要包含字典所有词汇，只需要包含激活词，这样的网络会比语音识别的网络小很多，有针对性地对关键词进行解码，可选的路径就少了很多，解码的速度也会得到大幅度的提升。对于解码出来的候选再作一个判断。 
 - 基于神经网络
-随着机器学习在图像领域的日益流行，神经网络也逐渐应用到语音领域，相比于上一中方法，这里不再需要解码步骤，实现了端到端的输出，也就是输入语音，输出关键词。
+随着机器学习在图像领域的日益流行，神经网络也逐渐应用到语音领域，相比于前一种方法，这里不再需要解码步骤，实现了端到端的输出，也就是输入语音，输出关键词。
 ​    ![kws-nn.png](/assets/overview/kws-nn.png)
+
 这是目前主流的方法，具体方式是
 1. 从语音信号里提取特征
 2. 经过一个神经网络，输入语音特征，输出激活词后验概率
@@ -35,13 +36,12 @@
 我们将在下一章中重点讨论特征提取和神经网络结构。
 
 
-## 12.2 如何萃取，特征提取
+## 12.2 特征提取
 与其他机器学习的任务类似，特征提取对于模型训练来说至关重要。
-
-目前最常用的语音特征提取方式是滤波器组Fbank和Mel-Frequency Cepstral Coefficients (MFCCs)。
+目前最常用的语音特征提取方式是滤波器组Fbank和MFCC。
 
 ### 12.2.1 Fbank
-filter banks包含如下步骤
+Fbank包含如下步骤
 - 预加重滤波器
 
 预加重处理其实是一个高通滤波器，目的是提升高频部分，使信号的频谱变得平坦，保持在低频到高频的整个频带中，能用同样的信噪比求频谱。同时，也是为了消除发生过程中声带和嘴唇的效应，来补偿语音信号受到发音系统所抑制的高频部分，也为了突出高频的共振峰。
@@ -69,21 +69,19 @@ $$
 
 - 短时傅里叶变换STFT
 
-基于每一帧做$$N$$点的FFT，我们称之为短时傅里叶变换Short-Time Fourier-Transform (STFT)，这里$$N$$的典型值是256或者512。然后基于如下公式计算功率谱密度
+基于每一帧做$$N$$点的FFT，我们称之为短时傅里叶变换Short-Time Fourier-Transform (STFT)，这里$$N$$的典型值是256或者512。然后基于如下公式计算功率谱密度，其中$x_{i}$是原始语音$x$的第$$i
 
 $$
 P=\frac{|FFT(x_{i})|^{2}}{N}
 $$
 
-其中$x_{i}$是原始语音$x$的第$$i$$帧
-
 - 梅尔频域滤波器组
 
-在语音唤醒任务里，我们设计出一组滤波器来提取特征，希望能一定程度上体现人耳的特点，从而提高任务准确性。
+在语音唤醒任务里，我们设计出一组滤波器来提取特征，希望能一定程度上体现人耳的特点，从而提
+高任务准确性。
 这里主要涉及两个人耳特性来帮助设计滤波器组
-
- - 频域感知非线性，指导滤波器组的中心频率
- - 掩蔽效应和临界带宽，指导滤波器组的带宽
+	- 频域感知非线性，指导滤波器组的中心频率
+	- 掩蔽效应和临界带宽，指导滤波器组的带宽
 
 人耳对不同频率的声音敏感度不同，就像一个滤波器组一样，它只关注某些特定的频率分量，也就说，它只让某些频段信号通过，而无视它不想感知频段信号。高频和低频的敏感度比较低，如下图所示，30Hz和15kHz的声音需要60dB才能被人耳听到，而1kHZ的声音在0db处就可以听到。
     ![ATH.png](/assets/feature-extract/ATH.png)
@@ -109,6 +107,7 @@ $$
 ### 12.2.2 MFCC
 MFCC包含完整的FBank操作，在此基础上额外增加了离散余弦变换DCT。
 基于上一步FBank得到的频谱对数坐标域上做DCT，相当于做逆FFT转换回时域，因此称为倒谱Cepstrum。从频域转换到倒谱域主要出于两点考虑
+
 - 去相关性
 FBank特征之间是高度相关的，DCT用于去除各维特征之间的相关性。
 - 数据压缩
@@ -119,9 +118,8 @@ MFCC只能反映语音的静态特征，而动态特征可以用这些静态特�
 基本上整个FBank/MFCC的处理流程都在尽量模拟人耳的特性，相当于有一个丰富先验知识的专家网络用来提取特征。目前已经有一些论文讨论，类似图像任务一样，让神经网络自主的从时域信号里提取特征，而不是靠专家知识。
 
 ### 12.2.3 PCEN
-FBank或者MFCC一般会在最后一步取对数来压缩动态范围，但是取对数之后，放大了小幅值的动态范围，而压缩了大幅值的动态范围，比如安静语音幅值会占据大部分动态范围。其次FBank/MFCC值和语音响度强相关，比如同样一段语音，音量放大或者缩小，会得到完全不同的FBank/MFCC值，而我们预期音量不应该对唤醒结果造成影响。基于此，google在2016年提出信道能量归一化的特征PCEN (per-channel energy normalization)。
+FBank或者MFCC一般会在最后一步取对数来压缩动态范围，但是取对数之后，放大了小幅值的动态范围，而压缩了大幅值的动态范围，比如安静语音幅值会占据大部分动态范围。其次FBank/MFCC值和语音响度强相关，比如同样一段语音，音量放大或者缩小，会得到完全不同的FBank/MFCC值，而我们预期音量不应该对唤醒结果造成影响。基于此，google在2016年提出信道能量归一化的特征PCEN (per-channel energy normalization) [^2] 。
 PCEN计算公式如下
-
 $$
 PCEN(t,f)=(\frac{E(t,f)}{(\epsilon +M(t,f))^\alpha}+\delta)^r-\delta^r
 \\ 
@@ -132,11 +130,11 @@ $$
 $$E(t,f)/(\epsilon +M(t,f))^\alpha$$部分实现了一个前馈AGC，归一化强度由$$\alpha$$控制，$$\alpha \in[0,1]$$，值越大归一化程度越大。通过归一化消除了响度影响。这里的归一化操作是基于通道的。AGC之后用开方来压缩动态范围。
 PCEN的另一个重要优点是可微分的，那就意味着公式里的超参数是可训练的，可以作为模型结构中的一层加入训练。试验证明训练得到的PCEN参数比固定PCEN参数性能更优，同时也超过FBank模型性能。
 
-## 12.3 如何控制风速火候，模型结构
-近年来基于神经网络的方法大量应用于语音识别任务，唤醒任务作为语音识别任务的一个分支，借鉴了很多模型结构，同时基于本身资源开销小，任务相对简单，基于远场语音等特点，相应做了优化改进。
+## 12.3 模型结构
+传统的语音唤醒是基于HMM加序列搜索方法，近年来基于神经网络的方法大量应用于语音识别任务，唤醒任务作为语音识别任务的一个分支，借鉴了很多模型结构，同时基于本身资源开销小，任务相对简单，基于远场语音等特点，相应做了优化改进。
 
 ### 12.3.1 DNN
-google比较早地在2014年提出用深度神经网络deep neural networks的方法来实现语音唤醒，称之为Deep KWS。如下图所示，唤醒分为三个步骤，
+google比较早地在2014年提出用深度神经网络deep neural networks的方法来实现语音唤醒，称之为Deep KWS [^3]。如下图所示，唤醒分为三个步骤，
   ![deep_kws_struct.png](/assets/nn-struct/deep_kws_struct.png)
 
 首先对输入语音做特征提取，然后经过DNN网络得到一个三分类的后验概率，三分类分别对应关键字Okey，Google和其他，最后经过后处理得到置信度得分用于唤醒判决。
@@ -177,7 +175,7 @@ $$
 
 - CNN通过对不同时频区域内的隐层节点输出取平均的方式，比DNN用更少的参数量，克服不同的说话风格带来的共振峰偏移问题
 
-google在2015年提出基于CNN的KWS模型，典型的卷积网络结构包含一层卷积层加一层max池化pooling层。
+google在2015年提出基于CNN的KWS模型[^4]，典型的卷积网络结构包含一层卷积层加一层max池化pooling层。
   ![cnn_kws_struct.png](/assets/nn-struct/cnn_kws_struct.png)
 
 这里输入特征$$V$$的时域维度是$$t$$，频域维度是$$f$$，经过一个$$n$$个$$(m\times r)$$的卷积核，同时卷积步长是$$(s,v)$$，输出$$n$$个$$(\frac{(t-m+1)}{s}\times \frac{(f-r+1)}{v})$$的feature map。卷积之后接一个max池化层提高稳定性，这里pooling降采样系数是$$(p\times q)$$，那么最终输出feature map是$$(\frac{(t-m+1)}{s\dot p}\times \frac{(f-r+1)}{v\dot q})$$。
@@ -203,11 +201,11 @@ google在2015年提出基于CNN的KWS模型，典型的卷积网络结构包含�
 CNN建模的一个缺陷是，一般尺寸的卷积核不足以表达整个唤醒词上下文，而RNN正好擅长基于上下文建模。RNN的缺点在于学不到连续频谱的空间关系，而CNN正好擅长基于空间关系建模。因此语音任务中出现将CNN和RNN结合的CRNN模型结构，并以CTC作为loss函数，baidu将这个模型结构应用在唤醒任务上，并大幅缩减了模型参数量。CRNN的网络结构如下图所示
   ![crnn_kws_struct.png](/assets/nn-struct/crnn_kws_struct.png)
 
-出于减少复杂度的考量，训练中的标签指示当前帧是否包含唤醒词，语音识别任务中的CTC损失函数被替换成开销更小的CE损失函数。从CTC损失函数到CE损失函数，给训练任务带来的重要变化就是训练样本需要精确严格的对齐，需要由一个更大的识别模型预先得到唤醒词在训练样本中的出现和结束时间点。
+出于减少复杂度的考量，训练中的标签指示当前帧是否包含唤醒词，语音识别任务中的CTC损失函数被替换成开销更小的CE损失函数[^5]。从CTC损失函数到CE损失函数，给训练任务带来的重要变化就是训练样本需要精确严格的对齐，需要由一个更大的识别模型预先得到唤醒词在训练样本中的出现和结束时间点。
 增大卷积核数目和增大RNN节点数目可以显著提高模型性能，RNN层选择GRU比LSTM计算量更小而且性能更好，但是增加RNN层数对提高性能几乎没有帮助。
 
 ### 12.3.4 DSCNN
-机器视觉任务中，深度可分离卷积结构(depthwise separable convolution DSCNN)在许多领域逐渐替代标准三维卷积。DSCNN相比于普通CNN，能够显著降低参数量和计算量。DSCNN最早在google的Xception和MobileNet中提出，核心思想是将一个完整的卷积运算分解为两步进行，分别为Depthwise Convolution与Pointwise Convolution。
+机器视觉任务中，深度可分离卷积结构(depthwise separable convolution DSCNN)在许多领域逐渐替代标准三维卷积。DSCNN相比于普通CNN，能够显著降低参数量和计算量。DSCNN最早在google的Xception[^6]和MobileNet[^7]中提出，核心思想是将一个完整的卷积运算分解为两步进行，分别为Depthwise Convolution与Pointwise Convolution。
   ![dscnn_algo.png](/assets/nn-struct/dscnn_algo.png)
 
 假设一个卷积输入尺寸是$$D_F×D_F×M$$，输出尺寸是$$D_F×D_F×N$$，$$D_F$$ 指特征的长和宽，那么
@@ -228,10 +226,10 @@ $$
 一般情况下，$$N$$较大，$$\frac{1}{N}$$ 可以忽略，那么比如$$3×3$$的卷积核，DSCNN可以降低9倍计算量。
   ![dscnn_kws_struct.png](/assets/nn-struct/dscnn_kws_struct.png)
 
-DSCNN应用于唤醒任务的模型结构如上图所示，在DSCNN层之后加一层pooling和全连接层，用于减少参数量并提供全局连接。
+DSCNN应用于唤醒任务的模型结构如上图所示，在DSCNN层之后加一层pooling和全连接层，用于减少参数量并提供全局连接[^8]。
 
 ### 12.3.5 Sub-band CNN
-在特征提取章节我们谈到，人耳对不同频带敏感度不一样，于是就有基于不同频谱子带用卷积提取特征的方法。
+在特征提取章节我们谈到，人耳对不同频带敏感度不一样，于是就有基于不同频谱子带用卷积提取特征的方法[^9]。
   ![sb_cnn_kws_struct.png](/assets/nn-struct/sb_cnn_kws_struct.png)
 
 首先输入特征被分成$$B$$个子带，图中$$B=3$$，每个子带应用一组卷积核，基于子带提取出的特征合并，作为下一层卷积层的输入，最后经过一层全连接层输出预测概率。频谱子带如何划分和子带提取特征如何再组合是子带CNN的重点
@@ -246,7 +244,7 @@ DSCNN应用于唤醒任务的模型结构如上图所示，在DSCNN层之后加�
 实验结果显示，得益于卷积层2感受野的扩大，第一种沿着通道维度组合性能最优。通常我们需要堆叠多层卷积来增大感受野，而Sub-band CNN提供一种更低成本的感受野扩大方式，适合唤醒任务低开销的特点。
 
 ### 12.3.6 Attention
-以上介绍的方法虽然可以把模型结构做到很小，但是需要一个预先训练的更大声学模型来完成帧级别的对齐工作。基于attention的模型可以做到完整的端到端训练，也就是不需要预先对齐。
+以上介绍的方法虽然可以把模型结构做到很小，但是需要一个预先训练的更大声学模型来完成帧级别的对齐工作。基于attention的模型可以做到完整的端到端训练，也就是不需要预先对齐[^10]。
   ![attention_kws_struct.png](/assets/nn-struct/attention_kws_struct.png)
 
 模型结构由两部分组成，Encoder和Attention。Encoder的作用是将声学特征转换到更高维的表达，Encoder的结构可以由不同网络类型组成，比如LSTM，GRU或CRNN。假设输入语音特征是$${\bf{x}}=( x_1, ..., x_T)$$，经过encoder之后得到高维表达$${\bf{h}}=( h_1, ..., h_T)$$，
@@ -292,18 +290,7 @@ $$
 
 
 
-    <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML" type="text/javascript"></script>
-    <script type="text/x-mathjax-config">
-            MathJax.Hub.Config({
-                    tex2jax: {
-                    skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
-                    inlineMath: [['$','$']]
-                    }
-                });
-    </script>
-</head>
-
-## 12.4 如何有效服用丹药，inference加速
+## 12.4 计算加速
 ### 12.4.1 硬件资源评估
 首先我们需要指标来评估硬件平台性能和模型或者算法开销，当硬件平台性能满足模型或者算法开销时，我们认为这个模型在这个平台上是可执行的。
 评估硬件平台性能或者模型开销一般会用到两个硬件资源指标，算力和带宽
@@ -334,8 +321,6 @@ $$
 前半段曲线是带宽受限，这个区间内我们的目标是提高算力，让模型运行在尽可能接近顶部位置，后半段是算力受限，这个区间内算力已经达到顶点，我们的目标是减低计算量。
   ![Example_of_a_naive_Roofline_model.svg](/assets/accelerating-inference/Example_of_a_naive_Roofline_model.svg.png)
 
-  >https://en.wikipedia.org/wiki/Roofline_model
-
 下面比较了两种不同类型运算的计算密度
 - 矩阵乘矩阵， $$C_{1000,1000}=A_{1000,1000} \times B_{1000,1000}$$
   - 算力开销，输出每一个点需要1K次乘加操作，一共需要2G FLOP
@@ -353,7 +338,6 @@ $$
 次一级的cache访问速度较快，容量比寄存器大一些
 我们通常意义的数据或者模型都是在RAM里，通常速度是跟不上CPU的速度的。
 ![ComputerMemoryHierarchy](/assets/accelerating-inference/ComputerMemoryHierarchy.svg)
->https://en.wikipedia.org/wiki/Memory_hierarchy
 
 在带宽受限的场景里，需要合理的运用有限的寄存器和cache资源，使得算力尽可能接近顶点。
 
@@ -370,8 +354,8 @@ $$
 需要注意的是，很多方法是内存占用和计算量/带宽之间的平衡，用更多的内存占用来换取更少的计算量或更低的带宽占用，例如fft/winograd方法，会一定程度上展开内存。在很多嵌入式设备上，没有足够内存来实现这些加速方法，这是加速之外的另一个维度的考量。
 
 
-####  12.4.2.1 GEMM: General Matrix to Matrix Multiplication
-NN前向计算中，绝大多数计算量都在于矩阵乘加，比如全连接和RNN操作，完全就是矩阵乘加操作。卷积操作复杂一些，一方面是通过重排，将卷积转换成矩阵乘加，另一方面通过变换，降低计算量。
+####  12.4.2.1 GEMM
+神经网络前向计算中，绝大多数计算量都在于矩阵乘加，比如全连接和RNN操作，完全就是矩阵乘加操作。卷积操作复杂一些，一方面是通过重排，将卷积转换成矩阵乘加，另一方面通过变换，降低计算量。
 矩阵乘加操作加速是应用最广泛适用的方法，我们先对矩阵根据尺寸做一个分类
 - matrix: 两个维度尺寸都很大
 - panel: 一个维度尺寸很大
@@ -405,7 +389,7 @@ $$
 - 最大化$$km$$，尽可能选择最大尺寸的$$A_{m,k}$$，使得$$A_{m,k}$$能够放进cache
 - 尽量使得$$k==m$$，也就是$$A_{m,k}$$接近方阵
 
-回到矩阵乘加，核心思想就是分割，将大矩阵分割成小块或者长条来适配cache，让一次数据读取做尽可能多的运算，提高计算密度。
+回到矩阵乘加[^11]，核心思想就是分割，将大矩阵分割成小块或者长条来适配cache，让一次数据读取做尽可能多的运算，提高计算密度。
 ![gemm](/assets/accelerating-inference/gemm.png)
 - 选择cache
 当考虑更复杂一些的模型，带多级缓存。我们需要考虑把哪些数据缓存在L1 cache，哪些数据缓存在L2 cache。
@@ -427,7 +411,7 @@ im2col的缺点就是内存开销增大，对于输入数据进行转换之后�
 
 
 ####  12.4.2.2 winograd/FFT
-我们知道时域卷积可以转换成频域点乘，这两种方法本质上是，通过某种线性变换，把卷积核和输入变换到另一个域，FFT是频域，winograd是winograd域，原来空间域下的卷积在新的空间域下变成逐点相乘，再将点乘结果逆变换回原空间域。
+我们知道时域卷积可以转换成频域点乘，这两种方法本质上是，通过某种线性变换，把卷积核和输入变换到另一个域，FFT是频域，winograd是winograd域，原来空间域下的卷积在新的空间域下变成逐点相乘，再将点乘结果逆变换回原空间域[^12]。
 
 $$
 Y=A^T[(B^TdB)\bigodot (G^TgG)]A
@@ -438,7 +422,7 @@ $$
 - winograd适合小卷积核，比如$$3\times3$$卷积的的优化应用非常广，但是语音中用到的大量非方的卷积核和stride，不适合用winograd
 
 ####  12.4.2.3 低精度量化
-在神经网络的训练阶段，最重要的是精度，其次才是速度，因此采用浮点表示是保证精度的最简单方法。但是在终端嵌入式设备上，天生地需要更小的内存占用，更快的运算速度，更低的功耗。这里将32bit浮点数量化成8bit定点数就非常有意义，当然是在维持统一水平的模型性能前提下。一个显而易见的好处就是模型占用空间缩小75%，然后8bit数据存取也会降低内存带宽，更高效地利用缓存，带来速度上的提升。
+在神经网络的训练阶段，最重要的是精度，其次才是速度，因此采用浮点表示是保证精度的最简单方法。但是在终端嵌入式设备上，天生地需要更小的内存占用，更快的运算速度，更低的功耗。这里将32bit浮点数量化成8bit定点数就非常有意义，当然是在维持统一水平的模型性能前提下。一个显而易见的好处就是模型占用空间缩小75%，然后8bit数据存取也会降低内存带宽，更高效地利用缓存，带来速度上的提升 [^13][^14]。
 量化过程中肯定会引入误差，从网络输入角度看，这些量化误差只是输入的噪声，网络应该有能力处理一定范围内的量化噪声，很多paper也实验证明了这一点。
 
 将一个浮点数$r$，量化成定点数$q$，需要额外两个参数，缩放系数$s$和定标值$z$，$s$是浮点数，$Z$是定点数，公式如下
@@ -464,3 +448,50 @@ $$
 
 与原始浮点矩阵乘法相比，不仅仍然有$N^3次$乘法和次$N^3次$加法，还增加了次减$2N^3次$法，输出矩阵的每个点都要做$2N$次减法。通过把乘法展开，可以降低运算复杂度。这里对于输入矩阵的行列分别求和，运算复杂度从$N^3$降低到$N^2$，因此此时核心的运算量还是在两个定点矩阵的乘法上。
 
+
+
+
+
+
+# abbreviation
+
+TPR (True Positive Rate)：召回率 
+FPR (False Positive Rate)：虚警率 
+LVCSR (Large Vocabulary Continuous Speech Recognition)：大词汇量连续语音识别
+HMM (Hidden Markov Model)：隐马尔科夫模型
+Fbank (Filter bank)：滤波器组
+MFCC (Mel-Frequency Cepstral Coefficient)：Mel倒谱系数
+STFT (Short-Time Fourier Transform)：短时傅里叶变换
+DCT (Discrete Cosine Transform)：离散余弦变换
+FFT (Fast Fourier Transform)：快速傅里叶变换
+PCEN (Per-Channel Energy Normalization)：分通道能量归一化
+AGC (Automatic Gain Control)：自动增益调整
+DNN (Deep Neural Network)：深度神经网络
+GMM (Gaussian Mixture Model)：高斯混合模型
+ReLU (Rectified Linear Unit)：线性整流函数
+CNN (Convolutional Neural Network)：卷积神经网络
+RNN (Recurrent Neural Network)：循环神经网络
+CTC (Connectionist Temporal Classification)
+DSCNN (Depthwise Separable Convolution)
+LSTM (Long Short-Term Memory)：长短期记忆网络
+GRU (Gated Recurrent Unit)：门控循环单元
+FLOP (FLoating-point OPerations)：浮点运算操作
+GEMM (General Matrix to Matrix Multiplication)：通用矩阵和矩阵乘法
+im2col (image to column)
+
+# reference
+
+[^1]: J.R. Rohlicek, W. Russell, S. Roukos, and H. Gish, “Continuous hidden Markov modeling for speaker-independent wordspotting,” in IEEE Proceedings of the International Conference on Acoustics, Speech and Signal Processing, 1990, pp. 627–630.
+[^2]: Y. Wang, P. Getreuer, T. Hughes, R. F. Lyon, and R. A. Saurous, “Trainable frontend for robust and far-field keyword spotting,” arXiv preprint, arXiv:1607.05666, 2016.
+[^3]: G. Chen, C. Parada, and G. Heigold, “Small-footprint keyword spotting using deep neural networks,” in Proceedings International Conference on Acoustics, Speech, and Signal Processing, 2014, pp. 4087-4091.
+[^4]: T. N. Sainath and C. Parada, “Convolutional neural networks for small-footprint keyword spotting,” in Proceedings of Interspeech,2015, pp. 1478-1482
+[^5]: S. O. Arik, M. Kliegl, R. Child, J. Hestness, A. Gibiansky, et al, “Convolutional Recurrent Neural Networks for Small-Footprint Keyword Spotting,” INTERSPEECH, pp.1606-1610, 2017.
+[^6]: François Chollet. Xception: Deep learning with depthwise separable convolutions. arXiv preprint arXiv:1610.02357, 2016.
+[^7]: Xiangyu Zhang, Xinyu Zhou, Mengxiao Lin, and Jian Sun. Shufflenet: An extremely efficient convolutional neural network for mobile devices. arXiv preprint arXiv:1707.01083, 2017.
+[^8]: Yundong Zhang, Naveen Suda, Liangzhen Lai, and Vikas Chandra, “Hello edge: Keyword spotting on microcontrollers,” CoRR, 2017
+[^9]: Chieh-Chi Kao, Ming Sun, Yixin Gao, Shiv Vitaladevuni, Chao Wang. Sub-band Convolutional Neural Networks for Small-footprint Spoken Term Classification. arXiv preprint arXiv:1907.01448, 2019.
+[^10]: Haitong Zhang, Junbo Zhang, Yujun Wang. Sequence-to-sequence Models for Small-Footprint Keyword Spotting. arXiv preprint arXiv:1811.00348, 2018.
+[^11]: Kazushige Goto, Robert A. van de Geijn. Anatomy of high-performance matrix multiplication. ACM Transactions on Mathematical Software (TOMS). Volume 34 Issue 3, May 2008, Article No. 12. 
+[^12]: A. Lavin and S. Gray, “Fast algorithms for convolutional neural networks,” in Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition, 2016, pp. 4013–4021.
+[^13]: B. Jacob, S. Kligys, Bo Chen, M. Zhu, M. Tang, A. Howard, H.Adam, D. Kalenichenko, “Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference,” IEEE Conference on Computer Vision and Pattern Recognition (CVPR), June 2018.
+[^14]:  Raghuraman Krishnamoorthi. Quantizing deep convolutional networks for efficient inference: A whitepaper. CoRR, abs/1806.08342, 2018.
