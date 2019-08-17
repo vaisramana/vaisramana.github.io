@@ -27,8 +27,8 @@
 这种方法与传统LVCSR（大规模词表语音识别）方法类似，区别在于解码网络的大小。因为不需要识别所有语音，因此解码网络不需要包含字典所有词汇，只需要包含激活词，这样的网络会比语音识别的网络小很多，有针对性地对关键词进行解码，可选的路径就少了很多，解码的速度也会得到大幅度的提升。对于解码出来的候选再作一个判断。 
 - 基于神经网络
 随着机器学习在图像领域的日益流行，神经网络也逐渐应用到语音领域，相比于前一种方法，这里不再需要解码步骤，实现了端到端的输出，也就是输入语音，输出关键词。
-​![kws-nn.png](/assets/overview/kws-nn.png)
-<center>图1 基于神经网络的语言唤醒流程</center>
+![](/assets/kws/图12-1.png)
+<center>图12-1 基于神经网络的语言唤醒流程</center>
 图1所示是目前主流的方法，具体流程是
 1. 从语音信号里提取特征
 2. 经过一个神经网络，输入语音特征，输出激活词后验概率
@@ -63,12 +63,12 @@ $$
 
 上一步分帧的操作相当于在连续的语音流上加了矩形窗截取出有限长片段，应用矩形窗相当于时域相乘，频域卷积，导致在频域除了应有主瓣外，还产生了不该有的旁瓣，称之为频谱泄漏。为了减小频谱泄漏，会用到一些旁瓣衰减更大的窗函数，比如汉明窗和高斯窗。
 如下图所示，矩形窗的旁瓣非常严重，而高斯窗和汉明窗对旁瓣有一定压制作用，减弱频谱泄漏带来的影响。
-![Window_function_(rectangular).svg](/assets/feature-extract/Window_function_(rectangular).svg)
-<center>图2 矩形窗</center>
-![Window_function_(gauss).svg](/assets/feature-extract/Window_function_(gauss).svg)
-<center>图3 高斯窗</center>
-![Window_function_(hamming).svg](/assets/feature-extract/Window_function_(hamming).svg)
-<center>图4 汉明窗</center>
+![](/assets/kws/图12-2.svg)
+<center>图12-2 矩形窗</center>
+![](/assets/kws/图12-3.svg)
+<center>图12-3 高斯窗</center>
+![](/assets/kws/图12-4.svg)
+<center>图12-4 汉明窗</center>
 - 短时傅里叶变换STFT
 
 基于每一帧做$$N$$点的FFT，称之为短时傅里叶变换Short-Time Fourier-Transform (STFT)，$$N$$的典型值是256或者512。基于如下公式计算功率谱密度，其中$x_{i}$是原始语音$x$的第$i$帧：
@@ -84,8 +84,9 @@ $$
  - 掩蔽效应和临界带宽，指导滤波器组的带宽
 
 人耳对不同频率的声音敏感度不同，就像一个滤波器组一样，它只关注某些特定的频率分量，也就说，它只让某些频段信号通过，而无视它不想感知频段信号。高频和低频的敏感度比较低，如下图所示，30Hz和15kHz的声音需要60dB才能被人耳听到，而1kHZ的声音在0db处就可以听到。
-![ATH.png](/assets/feature-extract/ATH.png)
-<center>图5 人耳频率敏感度</center>
+![](/assets/kws/图12-5.png)
+<center>图12-5 人耳频率敏感度</center>
+
 同时在感知频率区域内，敏感度也不是均匀分布的，比如在$$(100Hz\sim 4kHz)$$区域内曲线比较平缓，而5kHz以上曲线就变得陡峭。针对人耳敏感度在频域的这种非线性，将语音转换到梅尔Mel刻度，梅尔刻度是一种基于人耳对等距的音高变化的感官判断而定的非线性频率刻度，梅尔刻度和赫兹的转换关系是
 
 $$
@@ -97,11 +98,13 @@ $$
 人耳在安静的环境中分辨出轻微的声音，但是在嘈杂的环境里，这些轻微的声音就会被杂音所淹没，这个重要特性称为掩蔽效应，举例来说，假设安静环境下听清某声音A的最小分贝是35db，如果此时同时存在另一声音B，由于声音B的存在，听清声音A的最小分贝是40db，比安静环境下提高了5db。此时称声音B为掩蔽声，声音A为被掩蔽声，40db称为掩蔽阈。
 当两个频率相近的声音同时存在时，两者可能发生掩蔽效应，人耳会把两个声音听成一个。临界带宽指的就是这样一种令人的主观感觉发生突变的带宽边界，当两个声音的频域距离小于临界带宽时，就会产生屏蔽效应。将滤波器组带宽设置为临界带宽，就能模拟人耳的这一特性。
 基于以上信息，可以设计一组基于梅尔频域的三角滤波器，滤波器个数接近临界带宽个数，中心频点在梅尔频域均匀分布，来模拟人耳特性。
-![mel_filters.jpg](/assets/feature-extract/mel_filters.jpg)
-<center>图6 基于梅尔频域的三角滤波器</center>
+![](/assets/kws/图12-6.jpg)
+<center>图12-6 基于梅尔频域的三角滤波器</center>
+
 经过梅尔频域滤波器组之后，可以得到如下语谱图，用二维图像信息表达三维语音信息。语谱图的横坐标是时间，纵坐标是频率，坐标点值为语音数据能量，颜色越深，则该点语音能量越强。
-![spectrogram.png](/assets/feature-extract/spectrogram.png)
-<center>图7 语谱图</center>
+![](/assets/kws/图12-7.png)
+<center>图12-7 语谱图</center>
+
 ### 12.2.2 MFCC
 MFCC包含完整的FBank操作，在此基础上额外增加了离散余弦变换DCT。基于上一步FBank得到的频谱对数坐标域上做DCT，相当于做逆FFT转换回时域，因此称为倒谱Cepstrum。从频域转换到倒谱域主要出于两点考虑
 
@@ -132,8 +135,9 @@ PCEN的另一个重要优点是可微分的，那就意味着公式里的超参�
 
 ### 12.3.1 DNN
 google比较早地在2014年提出用深度神经网络deep neural networks的方法来实现语音唤醒，称之为Deep KWS [^3]。如下图所示，唤醒分为三个步骤，
-![deep_kws_struct.png](/assets/overview/kws-nn.png)
-<center>图8 google kws识别方法</center>
+![](/assets/kws/图12-8.png)
+<center>图12-8 google kws识别方法</center>
+
 首先对输入语音做特征提取，然后经过DNN网络得到一个三分类的后验概率，三分类分别对应关键字Okey，Google和其他，最后经过后处理得到置信度得分用于唤醒判决。
 
 - 特征提取
@@ -173,8 +177,9 @@ $$
 - CNN通过对不同时频区域内的隐层节点输出取平均的方式，比DNN用更少的参数量，克服不同的说话风格带来的共振峰偏移问题
 
 google在2015年提出基于CNN的KWS模型[^4]，典型的卷积网络结构包含一层卷积层加一层max池化pooling层。
-![cnn_kws_struct.png](/assets/nn-struct/cnn_kws_struct.png)
-<center>图9 CNN模型结构</center>
+![](/assets/kws/图12-9.png)
+<center>图12-9 CNN模型结构</center>
+
 这里输入特征$$V$$的时域维度是$$t$$，频域维度是$$f$$，经过一个$$n$$个$$(m\times r)$$的卷积核，同时卷积步长是$$(s,v)$$，输出$$n$$个$$(\frac{(t-m+1)}{s}\times \frac{(f-r+1)}{v})$$的feature map。卷积之后接一个max池化层提高稳定性，这里pooling降采样系数是$$(p\times q)$$，那么最终输出feature map是$$(\frac{(t-m+1)}{s\dot p}\times \frac{(f-r+1)}{v\dot q})$$。
 这里给出一个250K参数量的模型，包含2层卷积结构，一层线性低阶，一层全连接层，具体参数如下
 
@@ -196,15 +201,17 @@ google在2015年提出基于CNN的KWS模型[^4]，典型的卷积网络结构包
 
 ### 12.3.3 CRNN
 CNN建模的一个缺陷是，一般尺寸的卷积核不足以表达整个唤醒词上下文，而RNN正好擅长基于上下文建模。RNN的缺点在于学不到连续频谱的空间关系，而CNN正好擅长基于空间关系建模。因此语音任务中出现将CNN和RNN结合的CRNN模型结构，并以CTC作为loss函数，baidu将这个模型结构应用在唤醒任务上，并大幅缩减了模型参数量。CRNN的网络结构如下图所示
-![crnn_kws_struct.png](/assets/nn-struct/crnn_kws_struct.png)
-<center>图10 CRNN模型结构</center>
+![](/assets/kws/图12-10.png)
+<center>图12-10 CRNN模型结构</center>
+
 出于减少复杂度的考量，训练中的标签指示当前帧是否包含唤醒词，语音识别任务中的CTC损失函数被替换成开销更小的CE损失函数[^5]。从CTC损失函数到CE损失函数，给训练任务带来的重要变化就是训练样本需要精确严格的对齐，需要由一个更大的识别模型预先得到唤醒词在训练样本中的出现和结束时间点。
 增大卷积核数目和增大RNN节点数目可以显著提高模型性能，RNN层选择GRU比LSTM计算量更小而且性能更好，但是增加RNN层数对提高性能几乎没有帮助。
 
 ### 12.3.4 DSCNN
 机器视觉任务中，深度可分离卷积结构(depthwise separable convolution DSCNN)在许多领域逐渐替代标准三维卷积。DSCNN相比于普通CNN，能够显著降低参数量和计算量。DSCNN最早在google的Xception[^6]和MobileNet[^7]中提出，核心思想是将一个完整的卷积运算分解为两步进行，分别为Depthwise Convolution与Pointwise Convolution。
-![dscnn_algo.png](/assets/nn-struct/dscnn_algo.png)
-<center>图11 DSCNN与普通CNN对比</center>
+![](/assets/kws/图12-11.png)
+<center>图12-11 DSCNN与普通CNN对比</center>
+
 假设一个卷积输入尺寸是$$D_F×D_F×M$$，输出尺寸是$$D_F×D_F×N$$，$$D_F$$ 指特征的长和宽，那么
 
 - 普通卷积核$$D_K×D_K$$
@@ -221,14 +228,16 @@ $$
 $$
 
 一般情况下，$$N$$较大，$$\frac{1}{N}$$ 可以忽略，那么比如$$3×3$$的卷积核，DSCNN可以降低9倍计算量。
-![dscnn_kws_struct.png](/assets/nn-struct/dscnn_kws_struct.png)
-<center>图12 DSCNN模型结构</center>
+![](/assets/kws/图12-12.png)
+<center>图12-12 DSCNN模型结构</center>
+
 DSCNN应用于唤醒任务的模型结构如上图所示，在DSCNN层之后加一层pooling和全连接层，用于减少参数量并提供全局连接[^8]。
 
 ### 12.3.5 Sub-band CNN
 在特征提取章节提到，人耳对不同频带敏感度不一样，于是就有基于不同频谱子带用卷积提取特征的方法[^9]。
-  ![sb_cnn_kws_struct.png](./assets/sb_cnn_kws_struct.png)
-<center>图13 Sub-band CNN模型结构</center>
+  ![](/assets/kws/图12-13.png)
+<center>图12-13 Sub-band CNN模型结构</center>
+
 首先输入特征被分成$$B$$个子带，图中$$B=3$$，每个子带应用一组卷积核，基于子带提取出的特征合并，作为下一层卷积层的输入，最后经过一层全连接层输出预测概率。频谱子带如何划分和子带提取特征如何再组合是子带CNN的重点
 - 子带划分
 子带划分有两种选择，子带之间重叠或者不重叠。子带不重叠可能引入边界频点信息丢失，而子带重叠方法又会带来额外的计算量。
@@ -242,8 +251,9 @@ DSCNN应用于唤醒任务的模型结构如上图所示，在DSCNN层之后加�
 
 ### 12.3.6 Attention
 以上介绍的方法虽然可以把模型结构做到很小，但是需要一个预先训练的更大声学模型来完成帧级别的对齐工作。基于attention的模型可以做到完整的端到端训练，也就是不需要预先对齐[^10]。
-![attention_kws_struct.png](/assets/nn-struct/attention_kws_struct.png)
-<center>图14 Attention模型结构</center>
+![](/assets/kws/图12-14.png)
+<center>图12-14 Attention模型结构</center>
+
 模型结构由两部分组成，Encoder和Attention。Encoder的作用是将声学特征转换到更高维的表达，Encoder的结构可以由不同网络类型组成，比如LSTM，GRU或CRNN。假设输入语音特征是$${\bf{x}}=( x_1, ..., x_T)$$，经过encoder之后得到高维表达$${\bf{h}}=( h_1, ..., h_T)$$，
 
 $$
@@ -316,8 +326,9 @@ $$
 
 下面这个图反应的是，横坐标是计算密度，纵坐标是算力，在一个硬件平台中，一开始算力随着计算密度的增加线性增加，也就是说一开始喂得数据越多，运算处理的越快，但增大到一定程度时，算力就不再增长了。观察到的现象是，一开始随着计算量的增加，运行时间几乎不变，但当算力维持不变时，运行时间就随着计算量的增加线性增加。
 前半段曲线是带宽受限，这个区间内的目标是提高算力，让模型运行在尽可能接近顶部位置，后半段是算力受限，这个区间内算力已经达到顶点，目标是减低计算量。
-![Example_of_a_naive_Roofline_model.svg](/assets/accelerating-inference/Example_of_a_naive_Roofline_model.svg.png)
-<center>图15 算力带宽模型</center>
+![](/assets/kws/图12-15.png)
+<center>图12-15 算力带宽模型</center>
+
 下面比较了两种不同类型运算的计算密度
 - 矩阵乘矩阵， $$C_{1000,1000}=A_{1000,1000} \times B_{1000,1000}$$
   - 算力开销，输出每一个点需要1K次乘加操作，一共需要2G FLOP
@@ -332,9 +343,10 @@ $$
 
 这是一个计算机的存储器层次结构。越接近CPU的存储器越快也越昂贵。最接近CPU的寄存器访问速度最快，可以被算数指令直接访问，次一级的cache访问速度较快，容量比寄存器大一些。
 通常意义的数据或者模型都是在RAM里，通常速度是跟不上CPU的速度的。
-![ComputerMemoryHierarchy](/assets/accelerating-inference/ComputerMemoryHierarchy.svg)
+![](/assets/kws/图12-16.svg)
 
-<center>图16 计算机存储器层次结构</center>
+<center>图12-16 计算机存储器层次结构</center>
+
 在带宽受限的场景里，需要合理的运用有限的寄存器和cache资源，使得算力尽可能接近顶点。
 
 举个例子，cache资源在各种计算平台差距很大，NVIDIA tesla V100有36MB片上cache，一般智能音箱嵌入式平台有4KB，MCU平台没有片上cache。
@@ -365,8 +377,9 @@ $$
 - cache足够大，同时放下$$A_{m,k}$$，$$B_{k,n}$$ 的$$n_{r}$$列$$B_{j}$$和$$C_{m,n}$$的$$n_{r}$$列$$C_{j}$$
 - $$C_{j}+=AB_{j}$$ 能全速利用CPU
 - $$A_{m,k}$$ 一直保留在cache里不会被切换出去
-![gebp](/assets/accelerating-inference/gebp.png)
-<center>图17 gebp</center>
+![](/assets/kws/图12-17.png)
+<center>图12-17 gebp</center>
+
 那么
 	- 把$$A_{m,k}$$整个放进cache的开销是$$mk$$，
 	- 把$$B_{k,n}$$切分成$$n_{r}$$列一份，每次load进去一份开销是$$kn_r$$，一共$$kn$$
@@ -386,8 +399,9 @@ $$
 - 尽量使得$$k==m$$，也就是$$A_{m,k}$$接近方阵
 
 回到矩阵乘加[^11]，核心思想就是分割，将大矩阵分割成小块或者长条来适配cache，让一次数据读取做尽可能多的运算，提高计算密度。
-![gemm](/assets/accelerating-inference/gemm.png)
-<center>图18 gemm矩阵拆分</center>
+![](/assets/kws/图12-18.png)
+<center>图12-18 gemm矩阵拆分</center>
+
 - 选择cache
 当考虑更复杂一些的模型，带多级缓存。需要考虑把哪些数据缓存在L1 cache，哪些数据缓存在L2 cache。
 比如在VAR2中，分割直到的单元大小适配cache，然后再应用上面提到的GEBP/GEPB等方法
@@ -399,8 +413,8 @@ im2col有大神贾扬清实现在caffe，核心思想就是将卷积转换成GEM
 	-  im2col转换，图像转换成矩阵
 	-  GEMM计算
 
-![](/assets/accelerating-inference/im2col.png)
-<center>图19 im2col</center>
+![](/assets/kws/图12-19.png)
+<center>图12-19 im2col</center>
 - 输入输出的$$HW$$不变，每一个输出的点都需要$$C$$个通道，每个通道$$K\times K$$的输入数据块。如之前所说，为了寻址的连续性，im2col方法预先将$$C \times H\times W$$的数据块连续排列。
 - 卷积核也做了转置处理
 - 这样卷积操作就转换成矩阵乘法操作，可以应用成熟的GEMM实现。
