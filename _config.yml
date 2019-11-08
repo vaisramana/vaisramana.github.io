@@ -17,7 +17,7 @@ title: zzz
 author: Shuo 
 email: shuo-zhang@foxmail.com
 description: >- # this means to ignore newlines until "baseurl:"
- keyword spotting, inference engine, audoML  
+ keyword spotting, inference engine, autoML  
 baseurl: "" # the subpath of your site, e.g. /blog
 url: "" # the base hostname & protocol for your site, e.g. http://example.com
 #twitter_username: jekyllrb
