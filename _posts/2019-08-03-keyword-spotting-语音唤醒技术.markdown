@@ -12,7 +12,7 @@
 
 
 
-## 12.1 语音唤醒
+# 1 语音唤醒技术简介
 语音唤醒，或者说关键词检测，是语音识别任务的一个分支，需要从一串语音流里检测出有限个预先定义的激活词或者关键词，而不需要对所有的语音进行识别。这类技术是使能嵌入式设备语音交互能力的基础，可以被应用到各种领域，比如手机，智能音箱，机器人，智能家居，车载设备，可穿戴设备等等。唤醒词预先设定，大部分中文唤醒词是四字，音节覆盖越多，音节差异越大，相对唤醒和误唤醒性能越好，也有些技术领先的算法公司可以做到三字或者二字唤醒词。当设备处于休眠状态时，持续拾音持续检测唤醒词，一旦检测到唤醒词，设备从休眠状态切换到工作状态等待后续交互。
 作为一种基础应用，语音唤醒任务主要从两个维度考量
 
@@ -37,10 +37,10 @@
 将在下一章中重点讨论特征提取和神经网络结构。
 
 
-## 12.2 特征提取
+# 2 特征提取
 与其他机器学习的任务类似，特征提取对于模型训练来说至关重要，目前最常用的语音特征提取方式是滤波器组Fbank和MFCC。
 
-### 12.2.1 Fbank
+## 2.1 Fbank
 Fbank包含如下步骤
 - 预加重滤波器
 
@@ -105,7 +105,7 @@ $$
 经过梅尔频域滤波器组之后，可以得到如下语谱图，用二维图像信息表达三维语音信息。语谱图的横坐标是时间，纵坐标是频率，坐标点值为语音数据能量，颜色越深，则该点语音能量越强。
 ![](/assets/kws/图12-7.png)
 <center>图12-7 语谱图</center>
-### 12.2.2 MFCC
+## 2.2 MFCC
 MFCC包含完整的FBank操作，在此基础上额外增加了离散余弦变换DCT。基于上一步FBank得到的频谱对数坐标域上做DCT，相当于做逆FFT转换回时域，因此称为倒谱Cepstrum。从频域转换到倒谱域主要出于两点考虑
 
 - 去相关性
@@ -117,7 +117,7 @@ MFCC只能反映语音的静态特征，而动态特征可以用这些静态特�
 
 基本上整个FBank/MFCC的处理流程都在尽量模拟人耳的特性，相当于有一个丰富先验知识的专家网络用来提取特征。目前已经有一些论文讨论，类似图像任务一样，让神经网络自主的从时域信号里提取特征，而不是靠专家知识。
 
-### 12.2.3 PCEN
+## 2.3 PCEN
 FBank或者MFCC一般会在最后一步取对数来压缩动态范围，但是取对数之后，放大了小幅值的动态范围，而压缩了大幅值的动态范围，比如安静语音幅值会占据大部分动态范围。其次FBank/MFCC值和语音响度强相关，比如同样一段语音，音量放大或者缩小，会得到完全不同的FBank/MFCC值，而预期音量不应该对唤醒结果造成影响。基于此，google在2016年提出信道能量归一化的特征PCEN (per-channel energy normalization) [^2] 。
 PCEN计算公式如下
 $$
@@ -131,10 +131,10 @@ $$
 $$E(t,f)/(\epsilon +M(t,f))^\alpha$$部分实现了一个前馈AGC，归一化强度由$$\alpha$$控制，$$\alpha \in[0,1]$$，值越大归一化程度越大。通过归一化消除了响度影响。这里的归一化操作是基于通道的。AGC之后用开方来压缩动态范围。
 PCEN的另一个重要优点是可微分的，那就意味着公式里的超参数是可训练的，可以作为模型结构中的一层加入训练。试验证明训练得到的PCEN参数比固定PCEN参数性能更优，同时也超过FBank模型性能。
 
-## 12.3 模型结构
+# 3 模型结构
 传统的语音唤醒是基于HMM加序列搜索方法，近年来基于神经网络的方法大量应用于语音识别任务，唤醒任务作为语音识别任务的一个分支，借鉴了很多模型结构，同时基于本身资源开销小，任务相对简单，基于远场语音等特点，相应做了优化改进。
 
-### 12.3.1 DNN
+## 3.1 DNN
 google比较早地在2014年提出用深度神经网络deep neural networks的方法来实现语音唤醒，称之为Deep KWS [^3]。如下图所示，唤醒分为三个步骤，
 ![](/assets/kws/图12-8.png)
 <center>图12-8 google kws识别方法</center>
@@ -172,7 +172,7 @@ $$
 其中$$h_{max}=max\{1,j-w_{max}+1\}$$，是平滑窗$$w_{max}$$内的最早帧号索引。
 计算得到的置信度和预定义的阈值比较，做出唤醒判决。Deep KWS中使用的$$w_{smooth}=30$$和$$w_{max}=100$$，能得到相对较好的性能。
 
-### 12.3.2 CNN
+## 3.2 CNN
 在过去几年里，卷积神经网络 CNN越来越多的应用在声学模型上，CNN相比于DNN的优势在于
 - DNN不关心频谱结构，输入特征做任何拓扑变形也不会影响最终性能，然而频谱在时频域都有高度相关性，CNN在抓取空间信息方面更有优势
 
@@ -200,14 +200,14 @@ google在2015年提出基于CNN的KWS模型[^4]，典型的卷积网络结构包
 - 在必须减少模型计算量情况下，增大卷积核滑动步长优于增加pooling。
 - 在时域滑动$$s>1$$都会影响性能，而卷积核步长$$s=1$$后面接pooling，可以在降采样之前针对相邻帧关系更好的建模，比直接卷积核步长$$s>1$$更有效。
 
-### 12.3.3 CRNN
+## 3.3 CRNN
 CNN建模的一个缺陷是，一般尺寸的卷积核不足以表达整个唤醒词上下文，而RNN正好擅长基于上下文建模。RNN的缺点在于学不到连续频谱的空间关系，而CNN正好擅长基于空间关系建模。因此语音任务中出现将CNN和RNN结合的CRNN模型结构，并以CTC作为loss函数，baidu将这个模型结构应用在唤醒任务上，并大幅缩减了模型参数量。CRNN的网络结构如下图所示
 ![](/assets/kws/图12-10.png)
 <center>图12-10 CRNN模型结构</center>
 出于减少复杂度的考量，训练中的标签指示当前帧是否包含唤醒词，语音识别任务中的CTC损失函数被替换成开销更小的CE损失函数[^5]。从CTC损失函数到CE损失函数，给训练任务带来的重要变化就是训练样本需要精确严格的对齐，需要由一个更大的识别模型预先得到唤醒词在训练样本中的出现和结束时间点。
 增大卷积核数目和增大RNN节点数目可以显著提高模型性能，RNN层选择GRU比LSTM计算量更小而且性能更好，但是增加RNN层数对提高性能几乎没有帮助。
 
-### 12.3.4 DSCNN
+## 3.4 DSCNN
 机器视觉任务中，深度可分离卷积结构(depthwise separable convolution DSCNN)在许多领域逐渐替代标准三维卷积。DSCNN相比于普通CNN，能够显著降低参数量和计算量。DSCNN最早在google的Xception[^6]和MobileNet[^7]中提出，核心思想是将一个完整的卷积运算分解为两步进行，分别为Depthwise Convolution与Pointwise Convolution。
 ![](/assets/kws/图12-11.png)
 <center>图12-11 DSCNN与普通CNN对比</center>
@@ -232,7 +232,7 @@ $$
 <center>图12-12 DSCNN模型结构</center>
 DSCNN应用于唤醒任务的模型结构如上图所示，在DSCNN层之后加一层pooling和全连接层，用于减少参数量并提供全局连接[^8]。
 
-### 12.3.5 Sub-band CNN
+## 3.5 Sub-band CNN
 在特征提取章节提到，人耳对不同频带敏感度不一样，于是就有基于不同频谱子带用卷积提取特征的方法[^9]。
   ![](/assets/kws/图12-13.png)
 <center>图12-13 Sub-band CNN模型结构</center>
@@ -247,7 +247,7 @@ DSCNN应用于唤醒任务的模型结构如上图所示，在DSCNN层之后加�
 
 实验结果显示，得益于卷积层2感受野的扩大，第一种沿着通道维度组合性能最优。通常需要堆叠多层卷积来增大感受野，而Sub-band CNN提供一种更低成本的感受野扩大方式，适合唤醒任务低开销的特点。
 
-### 12.3.6 Attention
+## 3.6 Attention
 以上介绍的方法虽然可以把模型结构做到很小，但是需要一个预先训练的更大声学模型来完成帧级别的对齐工作。基于attention的模型可以做到完整的端到端训练，也就是不需要预先对齐[^10]。
 ![](/assets/kws/图12-14.png)
 <center>图12-14 Attention模型结构</center>
@@ -300,8 +300,8 @@ $$
 
 
 
-## 12.4 计算加速
-### 12.4.1 硬件资源评估
+# 4 计算加速
+## 4.1 硬件资源评估
 首先需要指标来评估硬件平台性能和模型或者算法开销，当硬件平台性能满足模型或者算法开销时，这个模型在这个平台上是可执行的。
 评估硬件平台性能或者模型开销一般会用到两个硬件资源指标，算力和带宽
 
@@ -356,7 +356,7 @@ $$
 因此普遍的嵌入式设备是没法一次性把3个 $$C_{1000,1000}$$矩阵cache起来，而是需要反复加载同一段内存到cache，用于CPU计算，CPU在很多时候都出于等待状态。因此像矩阵乘矩阵这样的操作，在嵌入式设备上不仅仅受限于算力的，也同样受限于带宽。
 
 
-### 12.4.2 加速方向
+## 4.2 加速方向
 由上文提到的硬件资源指标，可以大致归纳出如下加速方向
  - 降低计算量：fft/winograd加速卷积，稀疏化
  - 降低带宽：gemm，im2col加速卷积
@@ -365,7 +365,7 @@ $$
 需要注意的是，很多方法是内存占用和计算量/带宽之间的平衡，用更多的内存占用来换取更少的计算量或更低的带宽占用，例如fft/winograd方法，会一定程度上展开内存。在很多嵌入式设备上，没有足够内存来实现这些加速方法，这是加速之外的另一个维度的考量。
 
 
-####  12.4.2.1 GEMM
+###  4.2.1 GEMM
 神经网络前向计算中，绝大多数计算量都在于矩阵乘加，比如全连接和RNN操作，完全就是矩阵乘加操作。卷积操作复杂一些，一方面是通过重排，将卷积转换成矩阵乘加，另一方面通过变换，降低计算量。
 矩阵乘加操作加速是应用最广泛适用的方法，先对矩阵根据尺寸做一个分类
 - matrix: 两个维度尺寸都很大
@@ -411,7 +411,7 @@ $$
 - packing
 当一个大矩阵乘法GEMM被拆分成GEBP时，会发生列数据不连续，直接方法会导致大量TLB miss，寻址不连续，这就需要额外的打包工作，将一个小矩阵打包到连续内存。
 
-####  12.4.2.1 im2col
+###  4.2.1 im2col
 im2col有大神贾扬清实现在caffe，核心思想就是将卷积转换成GEMM
 	-  im2col转换，图像转换成矩阵
 	-  GEMM计算
@@ -424,7 +424,7 @@ im2col有大神贾扬清实现在caffe，核心思想就是将卷积转换成GEM
 im2col的缺点就是内存开销增大，对于输入数据进行转换之后扩大了$$k^2$$倍
 
 
-####  12.4.2.2 winograd/FFT
+###  4.2.2 winograd/FFT
 时域卷积可以转换成频域点乘，这两种方法本质上是，通过某种线性变换，把卷积核和输入变换到另一个域，FFT是频域，winograd是winograd域，原来空间域下的卷积在新的空间域下变成逐点相乘，再将点乘结果逆变换回原空间域[^12]。
 
 $$
@@ -436,7 +436,7 @@ $$
 - FFT不适合小卷积核，另外非常依赖FFT性能，设备端FFT通常只支持$$2^n$$的长度，对比卷积核的尺寸有要求
 - winograd适合小卷积核，比如$$3\times3$$卷积的的优化应用非常广，但是语音中用到的大量非方的卷积核和stride，不适合用winograd
 
-####  12.4.2.3 低精度量化
+###  4.2.3 低精度量化
 在神经网络的训练阶段，最重要的是精度，其次才是速度，因此采用浮点表示是保证精度的最简单方法。但是在终端嵌入式设备上，天生地需要更小的内存占用，更快的运算速度，更低的功耗。这里将32bit浮点数量化成8bit定点数就非常有意义，当然是在维持统一水平的模型性能前提下。一个显而易见的好处就是模型占用空间缩小75%，然后8bit数据存取也会降低内存带宽，更高效地利用缓存，带来速度上的提升 [^13][^14]。
 量化过程中肯定会引入误差，从网络输入角度看，这些量化误差只是输入的噪声，网络应该有能力处理一定范围内的量化噪声，很多paper也实验证明了这一点。
 
@@ -467,11 +467,64 @@ $$
 
 与原始浮点矩阵乘法相比，不仅仍然有$N^3次$乘法和次$N^3次$加法，还增加了次减$2N^3次$法，输出矩阵的每个点都要做$2N$次减法。通过把乘法展开，可以降低运算复杂度。这里对于输入矩阵的行列分别求和，运算复杂度从$N^3$降低到$N^2$，因此此时核心的运算量还是在两个定点矩阵的乘法上。
 
-## 12.5 小结
+# 5 总结
 
 本章首先介绍了语言唤醒任务及其应用和评价标准，算法流程基本可以分为3个部分，特征提取，打分模型和后处理模块。在特征提取章节详细介绍了应用最广的Fbank和MFCC方法，PCEN又在Fbank基础上做了改进，目的是减少特征值与语音响度相关性。随后在模型结构章节按照出现时间节点依次介绍了几种主流的打分模型结构，可以看到算法向着参数量越来越小，精度越来越高快速演进着。相比其他机器学习任务比如人脸识别和物体检测，语言唤醒任务通常对于算力和内存开销有着更大的限制，除了从算法上做出优化改进之外，工程化方面也有很多优化的方向。在最后一张中介绍了几种工程化方面的加速手段，事实上这些方法不仅仅局限于语音唤醒任务，也同时适用于语言信号处理或者机器视觉任务等其他领域。安卓平台基于谷歌唤醒的代码以及工程见https://github.com/shichaog/tensorflow-android-speech-kws，里面有一个已经编译好的apk，手机开启开发者权限后adb install 后就可以使用了。
 
-## 参考文献
+
+# abbreviation
+
+TPR (True Positive Rate)：召回率
+
+FPR (False Positive Rate)：虚警率
+
+LVCSR (Large Vocabulary Continuous Speech Recognition)：大词汇量连续语音识别
+
+HMM (Hidden Markov Model)：隐马尔科夫模型
+
+Fbank (Filter bank)：滤波器组
+
+MFCC (Mel-Frequency Cepstral Coefficient)：Mel倒谱系数
+
+STFT (Short-Time Fourier Transform)：短时傅里叶变换
+
+DCT (Discrete Cosine Transform)：离散余弦变换
+
+FFT (Fast Fourier Transform)：快速傅里叶变换
+
+PCEN (Per-Channel Energy Normalization)：分通道能量归一化
+
+AGC (Automatic Gain Control)：自动增益调整
+
+DNN (Deep Neural Network)：深度神经网络
+
+GMM (Gaussian Mixture Model)：高斯混合模型
+
+ReLU (Rectified Linear Unit)：线性整流函数
+
+CNN (Convolutional Neural Network)：卷积神经网络
+
+RNN (Recurrent Neural Network)：循环神经网络
+
+CTC (Connectionist Temporal Classification)
+
+DSCNN (Depthwise Separable Convolution)
+
+LSTM (Long Short-Term Memory)：长短期记忆网络
+
+GRU (Gated Recurrent Unit)：门控循环单元
+
+FLOP (FLoating-point OPerations)：浮点运算操作
+
+GEMM (General Matrix to Matrix Multiplication)：通用矩阵和矩阵乘法
+
+im2col (image to column)
+
+
+
+
+# 参考文献
+
 [^1]: J.R. Rohlicek, W. Russell, S. Roukos, and H. Gish, “Continuous hidden Markov modeling for speaker-independent wordspotting,” in IEEE Proceedings of the International Conference on Acoustics, Speech and Signal Processing, 1990, pp. 627–630.
 [^2]: Y. Wang, P. Getreuer, T. Hughes, R. F. Lyon, and R. A. Saurous, “Trainable frontend for robust and far-field keyword spotting,” arXiv preprint, arXiv:1607.05666, 2016.
 [^3]: G. Chen, C. Parada, and G. Heigold, “Small-footprint keyword spotting using deep neural networks,” in Proceedings International Conference on Acoustics, Speech, and Signal Processing, 2014, pp. 4087-4091.
@@ -487,31 +540,7 @@ $$
 [^13]: B. Jacob, S. Kligys, Bo Chen, M. Zhu, M. Tang, A. Howard, H.Adam, D. Kalenichenko, “Quantization and Training of Neural Networks for Efficient Integer-Arithmetic-Only Inference,” IEEE Conference on Computer Vision and Pattern Recognition (CVPR), June 2018.
 [^14]:  Raghuraman Krishnamoorthi. Quantizing deep convolutional networks for efficient inference: A whitepaper. CoRR, abs/1806.08342, 2018.
 
-## abbreviation
 
-TPR (True Positive Rate)：召回率 
-FPR (False Positive Rate)：虚警率 
-LVCSR (Large Vocabulary Continuous Speech Recognition)：大词汇量连续语音识别
-HMM (Hidden Markov Model)：隐马尔科夫模型
-Fbank (Filter bank)：滤波器组
-MFCC (Mel-Frequency Cepstral Coefficient)：Mel倒谱系数
-STFT (Short-Time Fourier Transform)：短时傅里叶变换
-DCT (Discrete Cosine Transform)：离散余弦变换
-FFT (Fast Fourier Transform)：快速傅里叶变换
-PCEN (Per-Channel Energy Normalization)：分通道能量归一化
-AGC (Automatic Gain Control)：自动增益调整
-DNN (Deep Neural Network)：深度神经网络
-GMM (Gaussian Mixture Model)：高斯混合模型
-ReLU (Rectified Linear Unit)：线性整流函数
-CNN (Convolutional Neural Network)：卷积神经网络
-RNN (Recurrent Neural Network)：循环神经网络
-CTC (Connectionist Temporal Classification)
-DSCNN (Depthwise Separable Convolution)
-LSTM (Long Short-Term Memory)：长短期记忆网络
-GRU (Gated Recurrent Unit)：门控循环单元
-FLOP (FLoating-point OPerations)：浮点运算操作
-GEMM (General Matrix to Matrix Multiplication)：通用矩阵和矩阵乘法
-im2col (image to column)
 
-# reference
+
 
