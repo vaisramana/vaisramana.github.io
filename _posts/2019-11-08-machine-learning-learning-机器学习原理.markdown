@@ -261,13 +261,146 @@ $$
 \epsilon=(\frac{\ln \vert H\vert + \ln \frac{2}{\sigma}}{2m})^\frac{1}{2}
 $$
 
-那么给定泛化误差小值$\epsilon$，得到$\sigma=2\vert H\vert \exp⁡(−2m\epsilon^2 )$，
+那么给定泛化误差小值$\epsilon$，得到$\sigma=2\vert H\vert \exp⁡(−2m\epsilon^2 )$
 
 $$
 R(h)−R_{emp}(h)\leq \epsilon \\
 R(h)−R_{emp}(h)\leq (\frac{\ln \vert H\vert + \ln \frac{2}{\sigma}}{2m})^\frac{1}{2} \\
 R(h)\leq R_{emp}(h) + (\frac{\ln \vert H\vert + \ln \frac{2}{\sigma}}{2m})^\frac{1}{2}
 $$
+
+从$(\frac{\ln \vert H\vert + \ln \frac{2}{\sigma}}{2m})^\frac{1}{2}$项可见，hypothesis空间越大，泛化误差越大。
+
+
+下面分别讨论一一对应方法和线性hypoth空间两种例子
+- 一一对应方法
+
+把训练集的特征和label做一个表一一对应记下来，那么在
+	- 数据集上的误差是0 $R_{emp}(h)=0$
+	- hypothesis空间$\vert H\vert $无穷大，因为hypothesis空间大小和样本空间大小一样，$(\frac{\ln \vert H\vert + \ln \frac{2}{\sigma}}{2m})^\frac{1}{2}=\infty$
+
+所以这种方法的泛化误差是无穷大。
+
+- 线性hypothesis空间
+
+hypothesis空间$h(x)=ax+b$，因为$a$和$b$可以取无穷多个值，那么这个空间的$\vert H\vert$也是无穷大，与一一对应的方法泛化误差是一样的，那ML还有意义？
+
+按照不等式$P[\bigcup_{h\in H}⁡ \vert R(h)−R_{emp}(h)\vert > \epsilon] \leq \sum_{h\in H} P[\vert R(h)−R_{emp}(h)\vert > \epsilon]$的上限$\sum_{h\in H} P[\vert R(h)−R_{emp}(h)\vert > \epsilon]$看，是的，线性hypothesis和一一对应方法一样没有任何意义，泛化误差无穷大。但是当这个不等式取到上限值时，意味着表示hypothsis空间内的所有的函数都是独立不相关的。
+
+布尔不等式数学归纳法，当$P(A\bigcap B)=0$时，才会出现上限值$P(A\bigcup B)=P(A)+P(B)-P(A\bigcap B)=P(A)+P(B)$
+
+而实际中hypothsis空间内的函数都是相关的，那么上面的不等式并不可能取到上限值。也就是说，
+对于两个hypothesis $h_1, h_2\in H$，事件$\vert R(h_1)−R_{emp}(h_1 )\vert >\epsilon $和事件$\vert R(h_2)−R_{emp}(h_2)\vert >\epsilon $不是独立的，这一点成立么？
+
+
+
+
+## 检查独立性假设
+![](/assets/machine-learning-theory/hyp_rainbow.png)
+
+上图给出一个例子说明，在给定线性hypothesis集和数据集下， $h_1, h_2\in H$，事件$\vert R(h_1)−R_{emp}(h_1 )\vert >\epsilon $和事件$\vert R(h_2)−R_{emp}(h_2)\vert >\epsilon $不是独立的。
+
+比如上面图中，如果红色hypothesis有较大泛化误差，那么相同斜率红色上方的所有hypothesis都有较大误差，图上所有的线性hypothesis都是有相关性的，连带着对应的泛化误差时间也是相关的。
+
+既然两个事件不是独立的，那么$\sum_{h\in H} P[\vert R(h)−R_{emp}(h)\vert > \epsilon]$这个上限值太宽松了，太消极悲观了。我们得找一个更合适的上限值。
+
+
+
+
+## The Symmetrization Lemma 对称引理
+假设我们还有一个尺寸为m的ghost数据集$S′$，可以证明，**待证明**
+
+$$
+P[sup_{h\in H}⁡ \vert R(h)−R_{emp}(h) \vert > \epsilon] \leq 2*P[sup_{h\in H}⁡ \vert R(h)−R'_{emp}(h) \vert > \frac{\epsilon}{2}]
+$$
+
+$R'_{emp}(h)$是hypothesis $h$在ghost数据集$S′$上得到的实验误差，这个式子说明
+（数据集S的最大实验泛化误差 - 真实泛化误差）大于$\epsilon$的概率，是（数据集S的最大实验泛化误差 - 数据集S’的最大实验泛化误差）大于$\frac{\epsilon}{2}$的概率的两倍
+
+这样的好处是，不等式右边不存在真实泛化误差，**都用实验泛化误差来表示边界上限，因此不需要考虑整个输入输出空间。**
+这种方法被称为 symmetrization lemma, was one of the two key parts in the work of Vapnik-Chervonenkis (1971).
+
+## The Growth Function
+看到在一个数据集中，许多hypothesis函数都对应相同的empirical risk，从中选择一个hypothesis称为有效hypothesis。有效hypothesis空间是原hypothesis空间的一个子集，而且依赖于数据集，我们标记为$H_\vert S$
+
+那么根据**Generalization Bound: 1st Attempt**中得到的结论
+
+$$
+P[sup_{h\in H}⁡ \vert R(h)−R_{emp}(h) \vert > \epsilon] = 
+P[\bigcup_{h\in H}⁡ \vert R(h)−R_{emp}(h)\vert > \epsilon] \\
+\leq \sum_{h\in H} P[\vert R(h)−R_{emp}(h)\vert > \epsilon] \\
+= \vert H \vert P[\vert R(h)−R_{emp}(h)\vert > \epsilon]
+$$
+
+可以得到
+
+$$
+P[sup_{h\in H_{\vert S \bigcup s'}}⁡ \vert R_{emp}(h)−R'_{emp}(h) \vert > \frac{\epsilon}{2}] \leq
+\vert H_{\vert S \bigcup s'} \vert P[\vert R_{emp}(h)−R'_{emp}(h) \vert > \frac{\epsilon}{2}]
+$$
+
+
+
+因为这里同时用数据集$S$和$S′$，所以hypothesis空间被限定在$S\bigcup S′$，那么现在被限定的hypothesis空间的大小是多少？$\vert H_\vert S\bigcup S′  \vert=?$
+限定的hypothesis空间的大小就是，value/label空间$S\bigcup S′$提取的独立元素个数
+比如考虑二分类问题，label $y={−1, +1}$，数据集中包含$m$个样本，从这个空间能提取的sample数（value, label）对数是，distinct labellings就是$2^m$
+>这里有效sample数不是$2m$，而是$2^m$，比如$m=3$情况下，假设$y={−1, +1}, x={−1, 0, +1}$，每个样本都有都有两种可能，$(x,−1)$和$(x,+1)$，那么3个样本张成的空间有$2^3=8$种可能
+
+| CASE | SAMPLE#1 #2 #3 |
+| ---- | -------------- |
+| 1    | 1,1,1          |
+| 2    | 1,1,-1         |
+| 3    | 1,-1,1         |
+| 4    | -1,1,1         |
+| 5    | -1,-1,1        |
+| 6    | 1,-1,-1        |
+| 7    | -1,1,-1        |
+| 8    | -1,-1,-1       |
+
+
+
+
+
+给定一个大小是m的数据集$S$，对应hypothesis空间是$H$，用**$\Delta_H (m)$ grouth function表示这种情况下的有效sample数目，也就是被个大小是m的数据集S限制的hypothesis空间大小$\Delta_H (m)=\vert H_{\vert S }\vert$**
+
+$$
+P[sup_{h\in H_{\vert S \bigcup s'}}⁡ \vert R_{emp}(h)−R'_{emp}(h) \vert > \frac{\epsilon}{2}] \leq
+\Delta_{H_{\vert S \bigcup s'}}(2m) P[\vert R_{emp}(h)−R'_{emp}(h) \vert > \frac{\epsilon}{2}]
+$$
+
+因为这里用了两个训练集，每个训练集大小是$m$，合并之后的数据集$S \bigcup s'$，最坏情况下，两个数据集没有任何sample是重复的，因此合并数据集$S \bigcup s'$的大小就是$2m$，被合并数据集$S \bigcup s'$限制的hypoth空间大小根据grouth function定义就是$\Delta_{H_{\vert S \bigcup s'}}(2m)$
+
+对于二分类问题$\Delta_H (m)\leq 2^m$，那么
+
+$$
+\Delta_{H_{\vert S \bigcup s'}}(2m) \leq 2^{2m} \\
+P[sup_{h\in H_{\vert S \bigcup s'}}⁡ \vert R_{emp}(h)−R'_{emp}(h) \vert > \frac{\epsilon}{2}] \leq
+2^{2m} P[\vert R_{emp}(h)−R'_{emp}(h) \vert > \frac{\epsilon}{2}]
+$$
+
+随着样本空间$m$增加，$2^{2m}$项增长得太快了，需要进一步限定
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
