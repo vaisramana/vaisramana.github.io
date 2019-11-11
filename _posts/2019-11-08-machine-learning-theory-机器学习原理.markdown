@@ -12,6 +12,9 @@
 
 
 
+# Machine Learning Theory
+
+
 ***原文***
 
 [Machine Learning Theostat_model_simplified.pngry - Part 1: Introduction](https://mostafa-samir.github.io/ml-theory-pt1/)
@@ -24,13 +27,12 @@
 
 
 
-
-# Part 1: Introduction
-
+## Part 1: Introduction
 
 
 
-## 定义学习问题
+
+### 定义学习问题
 一个监督学习问题里，有一个观察到的数据集$S={(x_1,y_1), ..., (x_m,y_m)}$，其中$x_i$是特征向量，$y_i$是label，学习目的是如何从给定$x_i$推断出$y_i$。
 已知条件
 
@@ -44,7 +46,7 @@
 
 
 
-## 目标函数
+### 目标函数
 我们不想直接和条件概率分布打交道，因此引入目标函数。用目标函数来简化代替条件概率函数。
 均值和方差可以用来分解一个随机变量，假设有两个随机变量$V$和$W$，
 
@@ -83,7 +85,7 @@ $$
 
 
 
-## Hypothesis 假设目标函数
+### Hypothesis 假设目标函数
 在估计目标函数的过程中，因为不能穷举所有函数，我们试图对于目标函数$f(x$)的形式做一个假设hypothesis。
 
 假设目标函数是一个线性函数，或者球面非线性函数，无论做什么假设，都定义一个可能的目标函数空间称为hypothesis set。
@@ -101,7 +103,7 @@ $$
 
 
 
-## 损失函数
+### 损失函数
 在整个数据集应用hypothesis函数$h$，然后求loss的均值，称为in-sample error或者**the empirical risk**
 
 $$
@@ -112,7 +114,8 @@ $$
 
 
 
-## The Generalization Error 泛化误差
+
+### The Generalization Error 泛化误差
 学习的目标是数据集的概率分布，而不是数据集本身。
 
 这就意味着hypothesis应该在没见过的采样数据上有小误差，**在整个概率分布上定义泛化误差**
@@ -126,7 +129,7 @@ $$
 
 
 
-## Is the Learning Problem Solvable?
+### Is the Learning Problem Solvable?
 $R_{emp}(h)$是基于采样数据集的实验误差，$R(h)$是基于整个联合分布$P(X,Y)$的泛化误差，如何在数学上表示两者接近？
 
 两者差值大于一个非常小值的概率足够小
@@ -146,7 +149,7 @@ $R(h)$和$R_{emp}(h)$的差值绝对值的上确界 $sup_{h\in H}$，大于一�
 
 
 
-# Part 2: Generalization Bounds
+## Part 2: Generalization Bounds
 最小化empirical risk或者训练误差并不能解决学习问题，但是如果$R(h)$和$R_{emp}(h)$的差值足够小，学习问题就被被解决。
 
 这里我们解释为什么这个差值可以做到很小。
@@ -154,7 +157,7 @@ $R(h)$和$R_{emp}(h)$的差值绝对值的上确界 $sup_{h\in H}$，大于一�
 
 
 
-## Independently and Identically Distributed 独立同分布
+### Independently and Identically Distributed 独立同分布
 首先做一个假设是，训练数据样本是独立同分布的
     - inference的数据集是从同一个概率分布采样出来，满足同分布
     - 采样的时候不依赖之前或之后的采样结果，样本之间没有依赖关系，满足样本之间相互独立
@@ -162,7 +165,7 @@ $R(h)$和$R_{emp}(h)$的差值绝对值的上确界 $sup_{h\in H}$，大于一�
 
 
 
-## 大数定律
+### 大数定律
 **当实验足够多次时，实验输出的平均值，接近真实分布的平均值，这称为大数定律。**
 
 有一随机变量$X$遵循概率分布$P$，从中采样出$m$个独立同分布的样本$x_1,x_2,…,x_m$，那么
@@ -182,7 +185,7 @@ $$
 
 
 
-## Hoeffding’s inequality 霍夫丁不等式
+### Hoeffding’s inequality 霍夫丁不等式
 大数定律指示指引了原则性方向，但并没有提供任何方法，集中不等式Concentration inequality 提供了方法。
 
     集中不等式描述了一个随机变量是否集中在某个取值附近:
@@ -217,8 +220,7 @@ $$
 
 
 
-
-## Generalization Bound: 1st Attempt
+### Generalization Bound: 1st Attempt
 保证整个hypothesis空间都满足泛化误差不超过$\epsilon$，表达式可以重写成
 
 $$
@@ -295,7 +297,7 @@ hypothesis空间$h(x)=ax+b$，因为$a$和$b$可以取无穷多个值，那么�
 
 
 
-## 检查独立性假设
+### 检查独立性假设
 ![](/assets/machine-learning-theory/hyp_rainbow.png)
 
 上图给出一个例子说明，在给定线性hypothesis集和数据集下， $h_1, h_2\in H$，事件$\vert R(h_1)−R_{emp}(h_1 )\vert >\epsilon $和事件$\vert R(h_2)−R_{emp}(h_2)\vert >\epsilon $不是独立的。
@@ -307,7 +309,7 @@ hypothesis空间$h(x)=ax+b$，因为$a$和$b$可以取无穷多个值，那么�
 
 
 
-## The Symmetrization Lemma 对称引理
+### The Symmetrization Lemma 对称引理
 假设我们还有一个尺寸为m的ghost数据集$S′$，可以证明，**待证明**
 
 $$
@@ -320,11 +322,15 @@ $R'_{emp}(h)$是hypothesis $h$在ghost数据集$S′$上得到的实验误差，
 这样的好处是，不等式右边不存在真实泛化误差，**都用实验泛化误差来表示边界上限，因此不需要考虑整个输入输出空间。**
 这种方法被称为 symmetrization lemma, was one of the two key parts in the work of Vapnik-Chervonenkis (1971).
 
-## The Growth Function
+
+
+
+### The Growth Function
 看到在一个数据集中，许多hypothesis函数都对应相同的empirical risk，从中选择一个hypothesis称为有效hypothesis。有效hypothesis空间是原hypothesis空间的一个子集，而且依赖于数据集，我们标记为$H_\vert S$
 
-那么根据**Generalization Bound: 1st Attempt**中得到的结论
+>有效hypothesis空间$H_\vert S$是一个，和数据集，hypothesis空间和模型算法复杂度相关的变量，理论上模型算法越复杂，$H_\vert S$可能越大。
 
+那么根据**Generalization Bound: 1st Attempt**中得到的结论
 $$
 P[sup_{h\in H}⁡ \vert R(h)−R_{emp}(h) \vert > \epsilon] = 
 P[\bigcup_{h\in H}⁡ \vert R(h)−R_{emp}(h)\vert > \epsilon] \\
@@ -383,11 +389,63 @@ $$
 
 
 
+### The VC-Dimension
+![](/assets/machine-learning-theory/hyp_rainbow2.png)
 
+- 三点数据集的二分类问题
 
+假设三个点是$abc$，理论上这个数据集可以提供有$2^3=8$种不同的sample组合，实际上线性hypothesis函数可以分出
 
+$$
+	(a), (b), (c), (a,b), (a,c), (b,c), (a,c,b), (NONE)
+$$
 
+8种组合，和最大有效样本数一致
 
+- 四点数据集的二分类问题
+
+假设四个点从左到右从上到下是$abcd$，理论上这个数据集可以提供有$2^4=16$种不同的sample组合，实际上线性hypothesis函数分不出
+
+$$
+	(a,d), (b,c)
+$$
+
+2种组合，实际只能分出$16-2=14$中组合，比最大有效样本数少
+
+二分类任务里，数据集中包含$m$个样本，如果一个hypothesis空间的确能够产生所有$2^m$种有效样本，或者说，在这个数据集中能产生$m$种不同的empirical risk，我们称这个hypothesis空间打散了数据集。
+
+实际上线性hypothesis不能打散任何4点数据集，比如下图
+
+![](/assets/machine-learning-theory/impossible-dichotomy.png)
+
+因此我们得到结论，**hypothesis空间大小通常都不能达到样本空间大小，或者说hypothesis通常都不能打散样本空间。**
+
+如果一个hypothesis空间$H$最多只能分离尺寸是$k$的数据集，那么
+
+$$
+\Delta_{H}(m) \leq \sum_{i=0}^{k}\begin{pmatrix}m\\i\end{pmatrix}
+$$
+
+最早由Vapnik-Chervonenkis提出，hypothesis空间$H$最多只能分离的数据集大小$k$，被称为$H$的VC-dimemsion $d_{vc}$  
+同时这个理论独立被Norbert Sauer证明，因此也被称为Sauer's lemma
+
+- 2D线性分类器，$d_{vc}=3$
+- $R^n$空间内的超平面hyperplane分类器$d_{vc}=n+1$
+
+应用Sauer's lemma可以进一步减小上边界，进一步推导，待证明
+
+$$
+\Delta_{H}(m) \leq \sum_{i=0}^{k}\begin{pmatrix}m\\i\end{pmatrix}
+              \leq (\frac{m.e}{d_{vc}})^{d_{vc}}
+              \leq O(m^{d_{dv}}) \\
+
+\begin{pmatrix}m\\i\end{pmatrix} = \frac{m\cdot (m-1)\cdot ... \cdot (m-i+1)}{i!}
+$$
+
+这里O是大O符号（Big O notation）是用于描述函数渐进行为的数学符号。更确切地说，它是用另一个（通常更简单的）函数来描述一个函数数量级的渐近上界。
+$d_{vc}$可以用来衡量hypothesis空间的复杂度或者丰富程度
+
+相比于之前的上边界$2^{2m}$，$O(m^{d_{vc}})$已经不再是指数增长了，边界被缩小了。
 
 
 
