@@ -111,8 +111,81 @@ $RM(t,f)$是SMM中的ratio mask，因此SA可以被看做是，ratio mask和spec
 
 
 
+## IV.FEATURES
+- mel-domain features
+	- mel-frequency cepstral coefficient (MFCC)
+	- delta-spectral cepstral coefficient (DSCC) 
+- linear prediction features
+	- perceptual linear prediction (PLP) 
+	- relative spectral transform PLP (RASTA- PLP)
+- gammatone-domain features
+	- gammatone feature (GF)
+	- gammatone frequency cepstral coefficient (GFCC)
+- zero-crossing features
+	- zero-crossings with peak-amplitudes (ZCPA)
+- autocorrelation features
+	- relative autocorrelation sequence MFCC (RAS-MFCC) 
+	- autocorrelation sequence MFCC (AC-MFCC)
+	- phase autocorrelation MFCC (PAC-MFCC)
+- medium-time filtering features
+	- power normalized cepstral coefficients (PNCC) 
+	- suppression of slowly-varying components and the falling edge of the power envelope (SSF)
+- modulation domain features
+	- Gabor filterbank (GFB)
+	- amplitude modulation spectrogram (AMS)
+- Pitch-based (PITCH) features
+
+用group Lasso方法选择特征，推荐特征集合包括AMS, RASTA- PLP和MFCC。
+这篇paper提出Multi-Resolution Cochleagram (MRCG) ，基于频谱不同精度计算四个cochleagrams，保证提供足够的本地和全局contex。然后提出的特征用auto-regressive
+moving average (ARMA)滤波器做后处理，用HIT−FA rate作为衡量指标
+>HIT−FA rate
+>HIT指的是语音点被正确分类，FA指的是噪音点呗错误分类
+
+特征选择对于性能影响很大。
+
+![](/assets/Supervised-Speech-Separation-Based-on-Deep-Learning-An-Overview/classification_performance.png)
 
 
+## V.MONAURAL SEPARATION ALGORITHMS
+单通道语音增强，去混响，去噪，说话人分离。
+
+### A. Speech Enhancement
+
+### B. Generalization of Speech Enhancement Algorithms
+考虑三个方面的泛化能力
+
+- 噪声
+噪音有平稳和非平稳，训练中选择的噪音总是有限的
+
+
+
+paper[^23]提出的方法是noise perturbation，或者说frequency perturbation，**频谱上的每个点在纵轴频域方向随机跳变**，方法如下
+对于每一个T-F点赋一个随机值，服从均匀分布
+$$
+r(f,t)\sim U(-1,1)
+$$
+
+根据当前点附近的点的随机值，计算出perturbation factor $\delta(f,t)$
+
+$$
+\delta(f,t) = \frac{\lambda}{(2p+1)(2q+1)} \sum_{f'=f-p}^{f+p} \sum_{t'=t-q}^{t+q} r(f',q')
+$$
+
+这里$p$和$q$控制平滑区域大小，$lambda$控制perturbation之后的幅值。这些都是超参数。最终perturbation之后的频谱可以写成
+
+$$
+S'(f,t)=S(f+\delta(f,t), t)
+$$
+
+- 说话人
+
+- SNR
+可以在训练中多增加几组SNR值以提高SNR泛化能力。事实上泛化能力对SNR并不敏感，虽然训练过程中只有有限几组SNR组合，但是帧级别和频谱点级别的SNR变化很大，提供了足够的多样性来支撑泛化能力。还有一种方法是在训练中逐步增大隐层节点数，来适应更低的SNR条件。
+
+
+
+## REFERENCES
+[^23]: J. Chen, Y. Wang, and D.L. Wang, "Noise perturbation for supervised speech separation," Speech Comm., vol. 78, pp. 1-10, 2016. 
 
 
 
