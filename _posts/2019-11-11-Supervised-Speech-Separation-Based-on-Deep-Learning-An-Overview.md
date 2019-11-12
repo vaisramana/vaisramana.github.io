@@ -144,7 +144,7 @@ $RM(t,f)$是SMM中的ratio mask，因此SA可以被看做是，ratio mask和spec
 这篇paper提出Multi-Resolution Cochleagram (MRCG) ，基于频谱不同精度计算四个cochleagrams，保证提供足够的本地和全局contex。然后提出的特征用auto-regressive
 moving average (ARMA)滤波器做后处理，用HIT−FA rate作为衡量指标
 >HIT−FA rate
->HIT指的是语音点被正确分类，FA指的是噪音点呗错误分类
+>HIT指的是语音点被正确分类，FA指的是噪音点被错误分类
 
 特征选择对于性能影响很大。
 
@@ -215,6 +215,33 @@ paper[^182]考虑到混响带噪语音的相位对重建过程带来的负面影
 
 ## D. Speaker Separation
 说话人分离是从一段多说话人混合的语音中提取出每个说话人的语音。
+- speaker dependent speaker separation 说话人相关
+训练和测试都是同一批说话人，
+- target dependent speaker separation 目标说话人相关
+分离的目标说话人固定
+- speaker independent speaker separation
+没有约束
+
+paper[^81]最早提出将DNN用于说话人分离，属于speaker dependent和target dependent，本质上还是通过找binary或者ratio mask来还原原始信号。在第$t$帧的两个说话人ground true语音频谱是$S_1(t)$和$S_2(t)$，估计得语音频谱是$\tilde{S_1(t)}$和$\tilde{S_2}(t)$，那么训练中loss是
+
+$$
+\frac{1}{2} (\sum_{t}(\vert \vert S_1(t)-\tilde{S_1}(t) \vert \vert^2 \\
++ \vert \vert S_2(t)-\tilde{S_2}(t) \vert \vert^2) \\
+- \gamma \vert \vert S_1(t)-\tilde{S_2}(t) \vert \vert^2 \\
+- \gamma \vert \vert S_2(t)-\tilde{S_1}(t) \vert \vert^2)
+$$
+
+其中$\gamma$是可调参数。
+
+speaker independent可以看做是无监督聚簇，每个说话人的T-F单元聚成一簇。这个聚簇的过程应该是根据说话人数目的不同动态变化的。
+paper[^69]最早用DNN解决speaker independent的说话人分离，他们的方法称为deep clustering，包含基于DNN的特征学习和频谱聚簇。
+基于聚簇的方法天生适合speaker independent任务，而基于mask/mapping的方法，在实现的时候就将输出和特定用户绑定，适合speaker dependent任务。
+如何将输出和特定用户解耦合，使得基于mask/mapping的方法也能适用于speaker independent任务？paper[^202]给出了解决方法，如下图
+
+![](/assets/Supervised-Speech-Separation-Based-on-Deep-Learning-An-Overview/figure_14.png)
+
+训练一个DNN来输出2个mask，每个都用来从带噪语音中生成干净语音的估计，DNN训练中loss函数是动态的。
+假设目标是分出$S$个语音信号，那么对应就训练$S$个mask，每个mask估计出来一个cleaned语音，和$S$个参考clean语音两两组合，一共有$S!$种组合，分别计算$S!$种组合的MSE。选择其中MSE最小的一种组合，然后模型就训练减少这一种组合的特定MSE。也就是说**同时推断出正确的mask-reference组合，和减少误差。**这种方式训练每次输出的mask/output和speaker的对应关系可能会变。带来的问题是，前向计算一段连续语音时，同一个用户的语音可能会在不同的output或者mask跳跃，所以需要额外的根据用户重排。解决重拍问题，**不是基于每个语音片段计算MSE，而是基于整句话计算MSE.**
 
 
 
@@ -225,6 +252,8 @@ paper[^182]考虑到混响带噪语音的相位对重建过程带来的负面影
 [^47]: S.-W. Fu, Y. Tsao, X. Lu, and H. Kawai, "Raw waveformbased speech enhancement by fully convolutional networks," arXiv:1703.02205v3, 2017.
 [^57]: K. Han, Y. Wang, and D.L. Wang, "Learning spectral mapping for speech dereverebaration," in Proceedings of ICASSP, pp. 4661-4665, 2014. 
 [^58]: K. Han, et al., "Learning spectral mapping for speech dereverberation and denoising," IEEE/ACM Trans. Audio Speech Lang. Proc., vol. 23, pp. 982-992, 2015. 
+[^69]: J. Hershey, Z. Chen, J. Le Roux, and S. Watanabe, "Deep clustering: Discriminative embeddings for segmentation and separation," in Proceedings of ICASSP, pp. 31-35, 2016. 
+[^81]: P.-S. Huang, M. Kim, M. Hasegawa-Johnson, and P. Smaragdis, "Deep learning for monaural speech separation," in Proceedings of ICASSP, pp. 1581-1585, 2014. 
 [^122]: D. Michelsanti and Z.-H. Tan, "Conditional generative adversarial networks for speech enhancement and noiserobust speaker verification," in Proceedings of Interspeech. pp. 2008-2012, 2017.
 [^138]: S. Pascual, A. Bonafonte, and J. Serra, "SEGAN: Speech enhancement generative adversarial network," in Proceedings of Interspeech. pp. 3642-3646, 2017.
 [^161]: M. Tu and X. Zhang, "Speech enhancement based on deep neural networks with skip connections," in Proceedings of ICASSP, pp. 5565-5569, 2017. 
@@ -233,6 +262,7 @@ paper[^182]考虑到混响带噪语音的相位对重建过程带来的负面影
 [^194]: X. Xiao, et al., "Speech dereverberation for enhancement and recognition using dynamic features constrained deep neural networks and feature adaptation," EURASIP J. Adv. Sig. Proc., vol. 2016, pp. 1-18, 2016. 
 [^195]: Y. Xu, J. Du, L.-R. Dai, and C.-H. Lee, "Dynamic noise aware training for speech enhancement based on deep neural networks," in Proceedings of Interspeech, pp. 2670-2674, 2014.
 [^196]: Y. Xu, J. Du, L.-R. Dai, and C.-H. Lee, "An experimental study on speech enhancement based on deep neural networks," IEEE Sig. Proc. Lett., vol. 21, pp. 65-68, 2014. 
+[^202]: D. Yu, M. Kolbak, Z.-H. Tan, and J. Jensen, "Permutation invariant training of deep models for speaker-independent 27 multi-talker speech separation," in Proceedings of ICASSP, pp. 241-245, 2017. 
 [^205]: H. Zhang, X. Zhang, and G. Gao, "Multi-target ensemble learning for monaural speech separation," in Proceedings of Interspeech, pp. 1958 -1962, 2017. 
 [^211]: Y. Zhao, Z.-Q. Wang, and D.L. Wang, "A two-stage algorithm for noisy and reverberant speech enhancement," in Proceedings of ICASSP, pp. 5580-5584, 2017. 
 
