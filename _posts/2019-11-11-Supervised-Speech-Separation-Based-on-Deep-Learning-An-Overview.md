@@ -1,22 +1,27 @@
 
 
 
+<head>
+    <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML" type="text/javascript"></script>
+    <script type="text/x-mathjax-config">
+            MathJax.Hub.Config({
+                    tex2jax: {
+                    skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+                    inlineMath: [['$','$']]
+                    }
+                });
+    </script>
+</head>
 
-# Supervised Speech Separation Based on Deep Learning: An Overview
+
+
 
 DeLiang Wang, Jitong Chen
 (Submitted on 24 Aug 2017 (v1), last revised 15 Jun 2018 (this version, v2))
 
-## I.INTRODUCTION
-语音分离的目的是从背景噪声中分离目标语音。
-
-
-
-## II.CLASSIFIERS AND LEARNING MACHINES
-
-
-
-## III.TRAINING TARGETS
+# I.INTRODUCTION
+# II.CLASSIFIERS AND LEARNING MACHINES
+# III.TRAINING TARGETS
 主要有两类训练目标
 - masking-based targets
 - mapping-based targets
@@ -28,7 +33,7 @@ DeLiang Wang, Jitong Chen
 
 ![](/assets/Supervised-Speech-Separation-Based-on-Deep-Learning-An-Overview/training_targets.png)
 
-#### A. Ideal Binary Mask
+## A. Ideal Binary Mask
 基于一段带噪信号的二维$T-F$表达，比如听觉谱 Cochleagram或者语谱图 Spectrogram，做如下二分类
 
 $$
@@ -40,10 +45,10 @@ $$
 
 其中$LC$是一个阈值，产生label的时候需要对频谱上的每一个$(T,F)$点做标注，check是否是0还是1，这是一个有监督的分类任务，loss函数一般用交叉熵。
 
-#### B. Target Binary Mask
+## B. Target Binary Mask
 类似IBM也是做二分类，和IBM不同的是，label来源不是SNR，而是每个$(T,F)$点的语音信号能量是否超过固定干扰。
 
-#### C. Ideal Ratio Mask
+## C. Ideal Ratio Mask
 IBM和TBM属于hard label，IRM属于soft label
 
 $$
@@ -56,7 +61,7 @@ $S(t,f)^2$和$N(t,f)^2$表示每个$(T,F)$点的语音信号能量和噪声能�
 
 IRM的loss函数通常会用MSE。
 
-#### D. Spectral Magnitude Mask
+## D. Spectral Magnitude Mask
 SMM或者FFT-MASK是基于干净语音和带噪语音的短时傅里叶变换STFT，
 
 $$
@@ -65,7 +70,7 @@ $$
 
 $\vert S(t,f) \vert$和$\vert Y(t,f) \vert$表示干净语音和带噪语音的频谱幅值。和IRM不同的是，SMM取值没有限制在1以内。为了获得分离后的语音，我们在频域幅值上应用SMM或者它的估计，然后再合成出分离后的语音。
 
-#### E. Phase-Sensitive Mask
+## E. Phase-Sensitive Mask
 PSM在SMM的基础上做了扩展
 
 $$
@@ -74,7 +79,7 @@ $$
 
 $\theta$表示干净语音相位和带噪语音相位的相位差。引入相位差带来更高的SNR，比SMM估计出的干净语音更好。
 
-#### F. Complex Ideal Ratio Mask
+## F. Complex Ideal Ratio Mask
 cIRM是IRM的复数域版本，与IRM相比能更好地从带噪语音里重建干净语音
 
 $$
@@ -89,14 +94,14 @@ $$
 
 其中$Y_r$和$Y_i$是带噪语音的实部和虚部，$S_r$和$S_i$是干净语音的实部和虚部，因此参数$cIRM$也是一个复数。
 
-#### G. Target Magnitude Spectrum
+## G. Target Magnitude Spectrum
 从带噪语音里直接估计干净语音的频谱，这里频谱可能是幅值谱，也可能是mel谱，通常会去log来压缩动态范围。TMS的形式是取对数而且归一化的频谱。
 loss函数是MSE。
 
-#### H. Gammatone Frequency Target Power Spectrum
+## H. Gammatone Frequency Target Power Spectrum
 与TMS不同的是，频谱是基于伽马滤波器的听觉谱。
 
-#### I. Signal Approximation
+## I. Signal Approximation
 SA的想法是，训练一个ratio mask来最小化干净语音和估计语音的频谱幅值差值。
 
 $$
@@ -111,7 +116,7 @@ $RM(t,f)$是SMM中的ratio mask，因此SA可以被看做是，ratio mask和spec
 
 
 
-## IV.FEATURES
+# IV.FEATURES
 - mel-domain features
 	- mel-frequency cepstral coefficient (MFCC)
 	- delta-spectral cepstral coefficient (DSCC) 
@@ -146,10 +151,10 @@ moving average (ARMA)滤波器做后处理，用HIT−FA rate作为衡量指标
 ![](/assets/Supervised-Speech-Separation-Based-on-Deep-Learning-An-Overview/classification_performance.png)
 
 
-## V.MONAURAL SEPARATION ALGORITHMS
+# V.MONAURAL SEPARATION ALGORITHMS
 单通道语音增强，去混响，去噪，说话人分离。
 
-### A. Speech Enhancement
+## A. Speech Enhancement
 paper[^39]提出基于子带做DNN映射，比全频带做映射性能更优。
 paper[^161]提出不连续的DNN层之间加skip connection可以提高性能。
 paper[^205]提出同时将mask和mapping作为训练目标。
@@ -157,7 +162,7 @@ paper[^205]提出同时将mask和mapping作为训练目标。
 paper[^138]提出speech enhancement GAN (SEGAN)，generator是一个全卷积网络用于增强降噪，discriminator和generator结构一样。SEGAN的结果比传统mask或者mapping方法要差。paper[^122]也是用GAN方法，G试图从带噪信号里增强频谱，D试图来区分增强频谱和干净频谱，这种方法的GAN性能可以接近DNN方法。
 
 
-### B. Generalization of Speech Enhancement Algorithms
+## B. Generalization of Speech Enhancement Algorithms
 考虑三个方面的泛化能力
 
 - 噪声
@@ -194,7 +199,7 @@ paper[^24]系统地讨论了噪音泛化能力，DNN用于在连续几帧内预�
 可以在训练中多增加几组SNR值以提高SNR泛化能力。事实上泛化能力对SNR并不敏感，虽然训练过程中只有有限几组SNR组合，但是帧级别和频谱点级别的SNR变化很大，提供了足够的多样性来支撑泛化能力。还有一种方法是在训练中逐步增大隐层节点数，来适应更低的SNR条件。
 
 
-### C. Speech Dereverberation and Denoising
+## C. Speech Dereverberation and Denoising
 房间混响是原始信号的卷积和房间冲击响应room impulse responses (RIRs)，它在时域和频域都会让信号失真。
 paper[^57]首次将DNN用于去混响，DNN模型用于映射一段混响语音和无混响语音，频域基于cochleagram，更新的paper[^58]，频域基于spectrogram，同时进行去混响和降噪。
 
@@ -208,8 +213,12 @@ paper[^182]考虑到混响带噪语音的相位对重建过程带来的负面影
 
 
 
+## D. Speaker Separation
+说话人分离是从一段多说话人混合的语音中提取出每个说话人的语音。
 
-## REFERENCES
+
+
+# REFERENCES
 [^23]: J. Chen, Y. Wang, and D.L. Wang, "Noise perturbation for supervised speech separation," Speech Comm., vol. 78, pp. 1-10, 2016. 
 [^24]: J. Chen, Y. Wang, S.E. Yoho, D.L. Wang, and E.W. Healy, "Large-scale training to increase speech intelligibility for hearing-imparied listeners in novel noises," J. Acoust. Soc. Am., vol. 139, pp. 2604-2612, 2016.
 [^39]:   J. Du and Y. Xu, "Hierarchical deep neural network for multivariate regresss," Pattern Recognition, vol. 63, pp. 149- 157, 2017.
