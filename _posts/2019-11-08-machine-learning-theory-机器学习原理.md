@@ -564,11 +564,75 @@ $$
 
 
 
+## The VC Generalization Bound
+讨论，整个hypothesis空间都满足泛化误差不超过$\epsilon$的概率，表示为$P[sup_{h\in H}⁡ \vert R(h)−R_{emp}(h) \vert > \epsilon] $
+在Generalization Bound: 1st Attempt里，单纯应用Hoeffding’s inequality 霍夫丁不等式可以得到
+
+$$
+P[sup_{h\in H}⁡ \vert R(h)−R_{emp}(h) \vert > \epsilon] \leq 2\vert H \vert e^{−2m\epsilon^2} \\
+$$
+
+令 $\sigma=2\vert H\vert e^{−2m\epsilon^2}$有
+
+$$
+\epsilon=(\frac{\ln \vert H\vert + \ln \frac{2}{\sigma}}{2m})^\frac{1}{2} 
+$$
+
+可以得到泛化误差的上限
+
+$$
+R(h) \leq R_{emp}(h) + \epsilon \\
+= R_{emp}(h) + (\frac{\ln \vert H\vert + \ln \frac{2}{\sigma}}{2m})^\frac{1}{2}
+$$
+
+在给定hypothesis空间$\vert H\vert $前提下，随着训练集样本数$m$变大，泛化误差$\epsilon$变小收敛至0，收敛速度是$O(\frac{1}{m})$。
+
+
+
+Vapnik-Chervonenkis theory 可以利用增长函数来进一步缩小边界，进而增快收敛速度。
+增长函数$\Delta_H(m)$描述了hypothesis空间$H$在数据集$S$上的表达能力，反映了hypothesis空间$H$的复杂度。
+Vapnik-Chervonenkis theory 定义证明了增长函数和泛化误差之间的关系
+$$
+P[sup_{h\in H}⁡ \vert R(h)−R_{emp}(h) \vert > \epsilon] \leq 4\Delta_H(2m) \exp(-\frac{m\epsilon^2}{8})
+$$
+
+令$\sigma = 4\Delta_H(2m) \exp(-\frac{m\epsilon^2}{8})$有
+
+$$
+\epsilon = \sqrt{\frac{8\ln{\Delta_H(2m)}+8\ln{\frac{4}{\sigma}}}{m}}
+$$
+
+可以得到泛化误差的上限
+
+$$
+R(h) \leq R_{emp}(h)+\epsilon \\
+=R_{emp}(h)+\sqrt{\frac{8\ln{\Delta_H(2m)}+8\ln{\frac{4}{\sigma}}}{m}}
+$$
+
+代入上面得到的结论$\Delta_{H}(m) \leq (\frac{e\cdot m}{d})^{d}$得到
+
+$$
+R(h)=R_{emp}(h)+\sqrt{\frac{8\ln{(\frac{e\cdot 2m}{d})^{d}}+8\ln{\frac{4}{\sigma}}}{m}} \\
+=R_{emp}(h)+\sqrt{\frac{8d\ln{(\frac{2m}{d}+1)}+8\ln{\frac{4}{\sigma}}}{m}}
+$$
+
+在给定hypothesis空间$\vert H\vert $前提下，随着训练集样本数$m$变大，泛化误差$\epsilon$变小收敛至0，收敛速度是$O(\frac{1}{\sqrt{m}})$。
+**VC定理将收敛速度从$O(\frac{1}{m})$提高到$O(\frac{1}{\sqrt{m}})$。**
 
 
 
 
+## One Inequality to Rule Them All
+这里讨论的VC边界只适用于二分类问题，但是VC概念框架，包括打散，增长函数和VC维度，同样可以推广到多分类和回归问题。
+Natarajan维度是VC维度在多分类问题上的推广，pseudo维度是VS维度在回归问题上的推广。
+还有Rademacher复杂度，通过hypothesis空间对于随机噪声的适应性来评估hypothesis空间的丰富程度。Rademacher复杂度可以适用任何学习问题。
+不管用什么工具，泛化误差边界都可以表示成
 
+$$
+R(h)=R_{emp}(h)+C(\vert H \vert, N, \sigma)
+$$
+
+这里$C$是hypothesis空间复杂度/大小/丰富程度，$N$是数据集大小，$1-\sigma$是关于这个边界的置信度。这个公式说明，**泛化误差可以有两方面组成，实验误差和模型复杂度。**
 
 
 
