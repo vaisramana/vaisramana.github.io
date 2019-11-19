@@ -194,7 +194,7 @@ $$
 有一随机变量$X$遵循概率分布$P$，从中采样出$m$个独立同分布的样本$x_1,x_2,…,x_m$，对于每个$a \leq x_i \leq b$，有
 
 $$
-P[\vert E_{x\sim P}[X]−\frac{1}{m} \sum_{i=1}^m{x_i} \vert > \epsilon] \leq 2\exp⁡(\frac{−2m\epsilon^2}{(b−a)^2}
+P[\vert E_{x\sim P}[X]−\frac{1}{m} \sum_{i=1}^m{x_i} \vert > \epsilon] \leq 2\exp{\frac{−2m\epsilon^2}{(b−a)^2}}
 $$
 
 应用到泛化误差上，**empirical risk**定义是
@@ -206,7 +206,7 @@ $$
 式子$P[\vert E_{x\sim P}[X]−\frac{1}{m} \sum_{i=1}^m{x_i} \vert > \epsilon]$里的$x_i$实际上是测试集误差$L(y_i,hx_i)$，假设测试集误差$L(y_i,hx_i)$被限定在0和1之间，那么$b−a=1$
 
 $$
-P[\vert R(h)−R_{emp}(h)\vert > \epsilon] \leq 2\exp⁡(−2m\epsilon^2）
+P[\vert R(h)−R_{emp}(h)\vert > \epsilon] \leq 2e^{−2m\epsilon^2}
 $$
 
 其中$m$是样本数，意味着，随着样本数$m$增大，泛化误差指数下降。
@@ -243,7 +243,7 @@ $$
 应用霍夫丁不等式得到
 
 $$
-\sum_{h\in H} P[\vert R(h)−R_{emp}(h)\vert > \epsilon] \leq \sum_{h\in H}2\exp⁡(−2m\epsilon^2)=2\vert H \vert exp⁡(−2m\epsilon^2) \\
+\sum_{h\in H} P[\vert R(h)−R_{emp}(h)\vert > \epsilon] \leq \sum_{h\in H}2 e^{−2m\epsilon^2}=2\vert H \vert e^{−2m\epsilon^2} \\
 $$
 
 $\vert H \vert$是hypothesis空间的尺寸，hypothesis函数数目
@@ -251,17 +251,18 @@ $\vert H \vert$是hypothesis空间的尺寸，hypothesis函数数目
 最终得到，整个hypothesis空间都满足泛化误差不超过$\epsilon$的概率上限
 
 $$
-P[sup_{h\in H}⁡ \vert R(h)−R_{emp}(h) \vert > \epsilon] \leq 2\vert H \vert exp⁡(−2m\epsilon^2) \\
+P[sup_{h\in H}⁡ \vert R(h)−R_{emp}(h) \vert > \epsilon] \leq 2\vert H \vert e^{−2m\epsilon^2} \\
 $$
 
 令 
 
 $$
-2\vert H\vert \exp⁡(−2m\epsilon^2 )=\sigma \\
-\epsilon=(\frac{\ln \vert H\vert + \ln \frac{2}{\sigma}}{2m})^\frac{1}{2}
+2\vert H\vert e^{−2m\epsilon^2}=\sigma \\
+\epsilon=(\frac{\ln \vert H\vert + \ln \frac{2}{\sigma}}{2m})^\frac{1}{2} \\
+m=\frac{1}{2\epsilon^2}(\ln{\vert H\vert}-\ln{\sigma})
 $$
 
-那么给定泛化误差小值$\epsilon$，得到$\sigma=2\vert H\vert \exp⁡(−2m\epsilon^2 )$
+那么给定泛化误差小值$\epsilon$，得到$\sigma=2\vert H\vert e^{−2m\epsilon^2 }$
 
 $$
 R(h)−R_{emp}(h)\leq \epsilon \\
@@ -269,7 +270,18 @@ R(h)−R_{emp}(h)\leq (\frac{\ln \vert H\vert + \ln \frac{2}{\sigma}}{2m})^\frac
 R(h)\leq R_{emp}(h) + (\frac{\ln \vert H\vert + \ln \frac{2}{\sigma}}{2m})^\frac{1}{2}
 $$
 
-从$(\frac{\ln \vert H\vert + \ln \frac{2}{\sigma}}{2m})^\frac{1}{2}$项可见，hypothesis空间越大，泛化误差越大。
+
+
+
+>由$\epsilon=(\frac{\ln \vert H\vert + \ln \frac{2}{\sigma}}{2m})^\frac{1}{2}$可见
+>
+>- hypothesis空间$\vert H\vert $越大，泛化误差$\epsilon$越大。
+
+>由$m=\frac{1}{2\epsilon^2}(\ln{\vert H\vert}-\ln{\sigma})$可见
+>- 在给定泛化误差$\epsilon$前提下，hypothesis空间$\vert H\vert $越大，所需要的训练集样本数$m$越大
+>- 在给定hypothesis空间$\vert H\vert $前提下，随着训练集样本数$m$变大，泛化误差$\epsilon$变小收敛至0，收敛速度是$O(\frac{1}{m})$
+
+
 
 
 下面分别讨论一一对应方法和线性hypoth空间两种例子
@@ -348,6 +360,7 @@ $$
 因为这里同时用数据集$S$和$S′$，所以hypothesis空间被限定在$S\bigcup S′$，那么现在被限定的hypothesis空间的大小是多少？$\vert H_\vert S\bigcup S′  \vert=?$
 限定的hypothesis空间的大小就是，value/label空间$S\bigcup S′$提取的独立元素个数
 比如考虑二分类问题，label $y={−1, +1}$，数据集中包含$m$个样本，从这个空间能提取的sample数（value, label）对数是，distinct labellings就是$2^m$
+
 >这里有效sample数不是$2m$，而是$2^m$，比如$m=3$情况下，假设$y={−1, +1}, x={−1, 0, +1}$，每个样本都有都有两种可能，$(x,−1)$和$(x,+1)$，那么3个样本张成的空间有$2^3=8$种可能
 
 | CASE | SAMPLE#1 #2 #3 |
@@ -386,6 +399,27 @@ $$
 
 
 
+> 西瓜书
+
+给定一个大小是$m$的数据集$S={x_1, x_2, ..., x_m}$，对应hypothesis空间是$H$，每个hypothesis函数都能对$S$中的所有样本给出一个label集合，
+
+$$
+h_{\vert S} = \{ h(x_1), h(x_2), ... , h(x_m) \}
+$$
+
+随着$m$增大，这个label集合也会相应增大。
+定义，在个大小是$m$的数据集$S$上，hypothesis空间$H$的增长函数$\Delta_H (m)$为
+
+$$
+\Delta_H(m) = \max_{\{ x_1, x_2, ..., x_m \}\in S}{\vert \{ (h(x_1), h(x_2), ... , h(x_m)) \vert h\in H\} \vert}
+$$
+
+遍历hypothesis空间$H$里的所有hypothesis函数$h$，在数据集$S$上能给出的label集合的最大数目。增长函数$\Delta_H(m)$越大，表明hypothesis空间$H$在数据集$S$上能给出的label数越多，hypothesis空间$H$的表达能力越强，对学习任务的适应能力也越强。
+**因此增长函数$\Delta_H(m)$描述了hypothesis空间$H$在数据集$S$上的表达能力，反映了hypothesis空间$H$的复杂度。**
+
+
+
+
 
 ## The VC-Dimension
 ![](/assets/machine-learning-theory/hyp_rainbow2.png)
@@ -418,13 +452,15 @@ $$
 
 因此我们得到结论，**hypothesis空间大小通常都不能达到样本空间大小，或者说hypothesis通常都不能打散样本空间。**
 
-如果一个hypothesis空间$H$最多只能分离尺寸是$k$的数据集，那么
+如果一个hypothesis空间$H$最多只能分离尺寸是$k$的数据集，$m$是数据集样本总数，那么
 
 $$
 \Delta_{H}(m) \leq \sum_{i=0}^{k}\begin{pmatrix}m\\i\end{pmatrix}
 $$
 
-最早由Vapnik-Chervonenkis提出，hypothesis空间$H$最多只能分离的数据集大小$k$，被称为$H$的VC-dimemsion $d_{vc}$  
+**$\Delta_{H} (m)$ grouth function表示被样本数是$m$的数据集限制的hypothesis空间大小，或者说，样本数是$m$的数据集加上hypothesis空间所能提供的**
+
+最早由Vapnik-Chervonenkis提出，hypothesis空间$H$最多只能分离的数据集大小$k$，被称为$H$的VC-dimension $d_{vc}$  
 同时这个理论独立被Norbert Sauer证明，因此也被称为Sauer's lemma
 
 - 2D线性分类器，$d_{vc}=3$
@@ -447,13 +483,83 @@ $d_{vc}$可以用来衡量hypothesis空间的复杂度或者丰富程度
 
 
 
+> 西瓜书
+
+- 打散定义
+
+hypothesis空间$H$在数据集$S$上能给出的label最大数目为增长函数$\Delta_H(m)$，假设这是一个二分类任务，样本数为$m$的数据集$S$最大只可能出现$2^m$种label，如果
+
+$$
+\Delta_H(m)=2^m
+$$
+
+那么我们称数据集$S$被hypothesis空间$H$打散。
 
 
 
 
+- VC维定义
+
+hypothesis空间$H$的VC维定义是，能被$H$打散的最大数据集大小，比如二分类里
+
+$$
+d_{VS}(H)=\max\{m: \Delta_H(m)=2^m\}
+$$
+
+$d_{VS}(H)=d$表明，存在大小为$d$的数据集可以被hypothesis空间$H$打散，而且这和数据集的数据分布无关。**注意，这不意味着所有大小为$d$的数据集都可以被hypothesis空间$H$打散。**
+举例，上文中的线性hypothesis可以打散3点数据集，但不能打散任何4点数据集，所以线性hypothesis的VC维为3。
 
 
 
+
+- Sauer's lemma
+
+Sauer引理给出VC维和增长函数之间的定量关系，假设hypothesis空间$H$的VC维是$d$
+
+$$
+\Delta_{H}(m) \leq \sum_{i=0}^{d}\begin{pmatrix}m\\i\end{pmatrix}
+$$
+
+数学归纳法证明可证明，见书未证明。
+
+由上面的公式可以推导增长函数的上限
+
+$$
+\Delta_{H}(m) \leq (\frac{e\cdot m}{d})^{d}
+$$
+
+基础1，假设数据集大小$m$远大于VS维$d$
+
+$$
+m>d \\
+(\frac{m}{d})^{d-i} > 1
+$$
+
+基础2，二项式级数展开公式
+
+$$
+(1+x)^m = \sum_{i=0}^{\infty}\begin{pmatrix}m\\i\end{pmatrix} x^{i} \geq \sum_{i=0}^{d}\begin{pmatrix}m\\i\end{pmatrix} x^{i}
+$$
+
+基础3，洛必达法则，夹逼定理可证明
+
+$$
+\lim_{x->\infty}{(1+x)^{\frac{1}{x}}}=e \\
+\lim_{x->\infty}{\ln{(1+x)^{\frac{1}{x}}}}=1
+$$
+
+可以证明
+
+$$
+\Delta_{H}(m) \leq \sum_{i=0}^{d}\begin{pmatrix}m\\i\end{pmatrix} \\
+\leq \sum_{i=0}^{d}\begin{pmatrix}m\\i\end{pmatrix} (\frac{m}{d})^{d-i}\\
+= (\frac{m}{d})^{d}\sum_{i=0}^{d}\begin{pmatrix}m\\i\end{pmatrix} (\frac{d}{m})^{i}\\
+\leq (\frac{m}{d})^{d}\sum_{i=0}^{m}\begin{pmatrix}m\\i\end{pmatrix} (\frac{d}{m})^{i} \\
+\leq (\frac{m}{d})^{d}\sum_{i=0}^{\infty}\begin{pmatrix}m\\i\end{pmatrix} (\frac{d}{m})^{i} \\
+= (\frac{m}{d})^{d}(1+\frac{d}{m})^m \\
+= (\frac{m}{d} (1+\frac{d}{m})^\frac{m}{d})^d \\
+\leq (\frac{e\cdot m}{d})^d
+$$
 
 
 
