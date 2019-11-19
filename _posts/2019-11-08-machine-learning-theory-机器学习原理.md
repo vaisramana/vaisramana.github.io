@@ -639,3 +639,204 @@ $$
 
 
 
+# Part 3: Regularization and the Bias-variance Trade-off
+
+上面得到泛化误差的结论
+
+$$
+R(h)=R_{emp}(h)+C(\vert H \vert, N, \sigma)
+$$
+
+假设训练集$N$和置信度$\sigma$固定，进一步简化为
+
+$$
+R(h)=R_{emp}(h)+C(\vert H \vert)
+$$
+
+后面的讨论都会基于这个简化公式。
+这个公式直觉上看，hypothesis空间应该越丰富，泛化误差越小，实际中不是这样。
+
+
+## Why rich hypotheses are bad?
+假设从区间$[-1, 1]$里均匀采样出样本$x$，目标函数为$f(x)=\sin(x)$，生成带噪信号$y=f(x)+\zeta$，这里$\zeta$是随机噪声，均值0方差2。
+在100个仿真数据集上，每个数据集200个点上分别训练三个hypothesis
+- 线性hypothesis，$h(x)=w_1x+w_0$
+- 立方hypothesis，$h(x)=w_1x+w_2x^2+w_3x^3+x_0$
+- 10维多项式hypothesis
+
+每个模型用浅蓝色曲线表示，100集平均的模型用深蓝色曲线表示，目标函数用黑色曲线表示。
+正常如果没有噪声的话，所有数据集点都在黑色曲线上，图中偏离目标函数黑色曲线的点都是带噪样本。距离越远，噪声越大。
+
+![](/assets/machine-learning-theory/3hyp.png)
+
+首先注意到，hypothesis越复杂越丰富，和目标函数的平均误差越小。
+**定义bias为期望输出和真实标记的差别**
+
+$$
+bias(x)=\overline{h}(x)-f(x)
+$$
+
+其中$f(x)$是真实标记，$\overline{h}(x)$是期望输出，是不同训练集上训练的不同hypothesis得到的输出取平均，即$\overline{h}(x)=E_{D}[h^{(D)}(x)]$，$h^{(D)}(x)$表示训练集$D$上训练出来的hypothesis函数。
+将目标函数$f(x)=\sin(x)$用泰勒级数展开
+
+$$
+\sin(x)=x-\frac{x^3}{3!}+\frac{x^5}{5!}-\frac{x^7}{7!}+\frac{x^9}{9!}-...
+$$
+
+随着分解的级数越来越大，高阶成分对函数值得影响也越来越小。
+- 线性hypothesis，$h(x)=w_1x+w_0$可以拟合出$\sin(x)$的$x$项，但是从$x^3$往面就没法拟合。
+- 立方hypothesis，$h(x)=w_1x+w_2x^2+w_3x^3+x_0$可以拟合出$x, x^3$项，从$x^4$往面就没法拟合。
+- 10维多项式hypothesis，可以拟合出$x, x^3, x^5, x^7, x^9$项，从$x^11$往面就没法拟合。
+
+10维多项式相比于立方函数，能减少的bias有限，因为立方函数不能拟合的$x^5, x^7, x^9$对于输出贡献有限。
+
+其次注意到，hypothesis越复杂，hypothesis拟合噪声的能力越强。
+比如10维多项式函数可以拟合到图像顶部的，远远偏离目标函数的点，我们称这个hypothesis在这个带噪数据集里过拟合了。
+
+
+
+**量化过拟合**
+不同训练集上训练的不同hypothesis，相同输入$x$经过不同hypothesis得到$h(x)$之间的方差来量化过拟合程度
+$$
+var(x)=E_{D}[(h^{(D)}(x)-\overline{h}(x))^2]
+$$
+
+总结
+- hypothesis越复杂，和目标函数的平均误差越小
+- hypothesis越复杂，越容易过拟合
+
+
+
+
+## The Bias-variance Decomposition 偏差方差分解
+
+![](/assets/machine-learning-theory/bias-var.png)
+
+因为训练集$D$是随机从数据集中采样的，因此 $h^{(D)}(x)$也可以看作是随机变量。用part1中的trick，一个随机变量可以分解成两个成分，表达均值的确定成分和表达方差的随机部分
+
+$$
+h^{(D)}(x)=\overline{h}(x)+H_{\sigma}^{(D)}(x)
+$$
+
+其中$H_{\sigma}^{(D)}(x)$的均值是0，方差等于hypothesis的方差
+
+$$
+Var(H_{\sigma}^{(D)}(x))=E_{D}[(h^{(D)}(x)-\overline{h}(x))^2]
+$$
+
+用均方误差函数$L(\hat{y}, y)=(\hat{y}-y)^2$，可以定义在某一个采样点$x$出的误差Risk
+
+$$
+R(h(x)) = E_{D}[L(h^{(D)}(x), f(x))] = E_{D}[(h^{(D)}(x)-f(x))^2] 
+$$
+
+代入$h^{(D)}(x)=\overline{h}(x)+H_{\sigma}^{(D)}(x)$和$bias(x)=\overline{h}(x)-f(x)$可得到
+
+$$
+R(h(x)) = E_{D}[(\overline{h}(x)+H_{\sigma}^{(D)}(x)-f(x))^2] \\
+= E_{D}[(bias(x)+H_{\sigma}^{(D)}(x))^2] \\
+= E_{D}[(bias(x))^2+2bias(x)H_{\sigma}^{(D)}(x)+(H_{\sigma}^{(D)}(x))^2]
+$$
+
+因为bias不依赖数据集$D$
+
+$$
+R(h(x)) = (bias(x))^2 + 2bias(x)E_{D}[H_{\sigma}^{(D)}(x)] + E_{D}[(H_{\sigma}^{(D)}(x))^2]
+$$
+
+因为$H_{\sigma}^{(D)}(x)$的定义就是均值为0，所以
+
+$$
+Mean(H_{\sigma}^{(D)}(x))=E_{D}[H_{\sigma}^{(D)}(x)]=0 \\
+Var(H_{\sigma}^{(D)}(x))=E_{D}[(H_{\sigma}^{(D)}(x)-Mean(H_{\sigma}^{(D)}(x)))^2]=E_{D}[(H_{\sigma}^{(D)}(x))^2]
+$$
+
+那么有
+
+$$
+R(h(x)) = (bias(x))^2 + E_{D}[(H_{\sigma}^{(D)}(x))^2] \\
+= (bias(x))^2 + Var(H_{\sigma}^{(D)}(x)) \\
+= (bias(x))^2 + E_{D}[(h^{(D)}(x)-\overline{h}(x))^2] \\
+= (bias(x))^2 + var(x)
+$$
+
+
+
+> 西瓜书
+
+$h^{(D)}$表示训练集$D$上训练出来的hypothesis函数，$h^{(D)}(x)$是这个hypothesis函数在$x$点的预测输出。因为训练集$D$是随机从数据集中随机采样的，因此 $h^{(D)}(x)$也可以看作是随机变量。
+- 偏差 bias
+bias定义为$h^{(D)}(x)$的期望$\overline{h}(x)=E_{D}[h^{(D)}(x)]$，和真实标记$f(x)$的偏离程度，**反映算法本身的拟合能力**
+
+$$
+bias(x)=\overline{h}(x)-f(x)
+$$
+
+- 方差 var
+var反映$h^{(D)}(x)$内部的波动情况，或者说偏离均值的程度，**反映训练集波动导致的学习性能变化，数据扰动所造成的影响**
+
+$$
+var(x) = E_{D}[(h^{(D)}(x)-\overline{h}(x))^2]
+$$
+
+- 噪声
+**噪声反映真实标记和数据集中的标记的偏离**
+
+$$
+\epsilon^2 = E_{D}[(y_D-y)^2]
+$$
+
+
+用均差误差函数作为loss函数，预测输出为$h^{(D)}(x)$，真实label为$y$，数据集实际label为$y_D$，**期望的泛化误差可以分解成偏差，方差和噪声之和**。
+
+$$
+E_{D}[(h^{(D)}(x)-y_D)^2] = E_{D}[(h^{(D)}(x)-\overline{h}(x)+\overline{h}(x)-y_D)^2] \\
+= E_{D}[(h^{(D)}(x)-\overline{h}(x))^2] + E_{D}[(\overline{h}(x)-y_D)^2] + E_{D}[2(h^{(D)}(x)-\overline{h}(x))(\overline{h}(x)-y_D)] \\
+
+\quad \\
+\because \overline{h}(x)=E_{D}[h^{(D)}(x)] \\ 
+\therefore E_{D}[2(h^{(D)}(x)-\overline{h}(x)]=E_{D}[2(h^{(D)}(x)]-\overline{h}(x)=0 \\
+\quad \\
+
+= E_{D}[(h^{(D)}(x)-\overline{h}(x))^2] + E_{D}[(\overline{h}(x)-y_D)^2] \\
+= var(x) + E_{D}[(\overline{h}(x)-y+y-y_D)^2] \\
+= var(x) + E_{D}[(\overline{h}(x)-y)^2] + E_{D}[(y-y_D)^2] + E_{D}[2(\overline{h}(x)-y)(y-y_D)] \\
+
+\quad \\
+\text{assume}\qquad E_{D}[y-y_D]=0
+\quad \\
+
+= var(x) + E_{D}[(\overline{h}(x)-y)^2] + E_{D}[(y-y_D)^2] \\
+= var(x) + (bias(x))^2 + \epsilon^2
+$$
+
+一般来说bias和var是冲突的，称为Bias–variance tradeoff。
+
+![](/assets/machine-learning-theory/bias-var-tradeoff.png)
+
+给定学习任务，调整学习算法的训练程度，
+- 当训练不足时，模型拟合能力不够，训练数据的扰动不足以使得模型输出产生明显变化，此时bias主导了泛化误差，此时状态欠拟合
+- 当训练充足时，模型拟合能力变强，训练数据的扰动会导致模型输出显著变化，此时var主导了泛化误差，此时状态过拟合
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
