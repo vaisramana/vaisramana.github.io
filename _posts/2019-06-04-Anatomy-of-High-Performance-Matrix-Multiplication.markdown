@@ -27,7 +27,10 @@ Anatomy of High-Performance Matrix Multiplication
 
 第二章介绍了本文用到的符号，第三章介绍了一种分层的矩阵乘法实现方法，第四章介绍inner-kernel实现。第五章介绍了现实中最常见场景下的算法。第六章给出了现实中如何调整算法参数以优化性能。第七章介绍了不同架构下的算法性能。最后一章包含一些总结。
 
+
+
 # 2. NOTATION
+
 矩阵分解矩阵乘法的是核心，给定一个$m\times n$的矩阵$X$，本文中**只考虑按行分块或者按列分块**
 $$
 X=
@@ -49,11 +52,17 @@ $$
 
 ![Fig2](/assets/Anatomy-of-High-Performance-Matrix-Multiplication/Fig2.png)
 
+
+
 # 3. A LAYERED APPROACH TO GEMM
+
 如下图所示，GEMM可以被分解成多个GEPP，GEMP或者GEPM，进一步可以分解成多个GEBP，GEPB或者GEDOT kernel。
 ![Fig5](/assets/Anatomy-of-High-Performance-Matrix-Multiplication/Fig5.png)
 
+
+
 # 4. HIGH-PERFORMANCE GEBP, GEPB, AND GEPDOT
+
 现在我们讨论GEBP，GEPB和GEDOT的高性能实现。首先我们在一个简单内存结构模型下分析数据搬移开销。更复杂和实际的内存结构模型将在4.2章节讨论。
 
 ## 4.1 Basics
@@ -116,10 +125,119 @@ TLB的存在意味着我们需要满足额外的假设
 - Assumptions (d)：为了保证计算$C_j:=AB_j+C_j$时不会出现TLB miss，$m_c, k_c$必须足够小使得，block矩阵$A$，panel矩阵$B, C$按$n_r$行或$n_r$列拆分成$B_j, C_j$矩阵可以**同时被TLB访问**
 - Assumptions (e)：在直到计算完成之前，block矩阵$A$必须一直能被TLB访问。
 
+### 4.2.3 Packing
+通常矩阵$A$是一个大矩阵分解之后的小矩阵，因此矩阵$A$的数据在内存中不是连续的， 不连续意味着可能的TLB miss。解决方法是将矩阵$A$ pack成连续数组$\tilde{A}$。适当选择参数$m_c, k_c$使得$\tilde{A}, B_j, C_j$可以容纳在L2 cache里，并且可以同时被TLB访问到。
+
+#### Case 1: The TLB is the limiting factor
+假设系统有$T$个TLB entries，$\tilde{A}, B_j, C_j$对应的TLB entries数目是$T_{\tilde{A}}, T_{B_j}, T_{C_j}$，那么有
+$$
+T_{\tilde{A}}+2(T_{B_j}+T_{C_j}) \leq T
+$$
+
+$ T_{B_j}, T_{C_j}$前面有系数2是因为当计算$C_j:=\tilde{A}B_j+C_j$时，TLB需要同时准备好$B_{j+1}, C_{j+1}$
+相比于将$A$加载到L2 cache的开销，将$A$ pack成$\tilde{A}$的操作的开销，不会太大。理由是，packing可以被安排，使得$\tilde{A}$加载到L2 cache和能被TLB访问后，立即能为随后计算使用。前提是，$A$的访问开销不会明显大于将$A$加载到L2 cache，而这一点即使不做$A$没有做pack也是必然的。
+GEPP或者GEPM会被分解成GEBP，在之前的case里，block矩阵$B$会在多个GEBP里重用。这就意味着将$B$拷贝成连续数组$\tilde{B}$是有价值的，$B_j$对应的TLB entries数目是$T_{B_j}$也会对应下降到$T_{\tilde{B}_j}$。
+
+#### Case 2: The size of the L2 cache is the limiting factor.
+可以得到case 1类似的结论。
+
+### 4.2.4 Accessing data contiguously.
+为了寄存器更高效的搬移数据，pre-fetch？连续CPU指令需要读取的数据在内存中必须连续。这不仅需要pack，还需要重排。第6章详细介绍。
+
+### 4.2.5 Implementation of GEPB and GEDOT
+类似GEBP
 
 
 
+# 5. PRACTICAL ALGORITHMS
 
+介绍Fig. 4中的6种实现
+
+## 5.1 Implementing gepp with gebp
+![Fig8](/assets/Anatomy-of-High-Performance-Matrix-Multiplication/Fig8.png)
+
+在gebp_opt1方法中，我们希望$A$一直保留在L2 cache里，$B, C$反复更新在L1 cache，因此需要确定$A$的尺寸最大可以多大，$A$的尺寸上限决定于可用TLB entry数目$\tilde{A}$
+- 将$B$ packing成$\tilde{B}$，$B_j$和$B_{j+1}$各需要一个TLB entry
+- 用$C_{aux}$尺寸是表示着对于这个buffer只需要用到一个TLB entry，$C_j$尺寸是$m_c\times n_r$，如果$m_c$很大的话，每个TLB entry包含一个$m_c$，最多需要$n_r$个TLB entry
+- 那么剩余留给$\tilde{A}$的TLB数目是$T_{\tilde{A}}=T-(n_r+3)$
+
+$C_j$是否连续不是太大的问题，因为这部分数据在GEPP计算时没有重用，只会访问一次。
+一旦$B$和$A$变成连续的$\tilde{B}$和$\tilde{A}$后，gebp_opt1内的循环计算可以达到浮点运算速度峰值。
+
+- packing $B$到$\tilde{B}$的拷贝，是内存到内存的拷贝，开销和$k_c\times n$成正比，分摊到$2m\times k_c\times n$的计算量里，每次拷贝需要$2m$次计算，这种packing操作打乱了之前的TLB上下文。
+- packing $A$到$\tilde{A}$的拷贝，如果合理编排的话，可以是内存到L2 cache的拷贝，开销和$k_c\times m_c$成正比，分摊到$2m\times k_c\times n$的计算量里，每次拷贝需要$2n$次计算。实际中，这种拷贝不是很耗时。
+
+这种方法适合，$m,n$很大而$k$不大的GEMM类型，如GEPP的定义。
+
+## 5.2 Implementing gepm with gebp
+![Fig9](/assets/Anatomy-of-High-Performance-Matrix-Multiplication/Fig9.png)
+
+和GEBP不同的是，GEBP中的$C$只需访问一次，而GEPM里的$C$需要反复更新，因此值得将结果加到$C$之前先累加$\tilde{C}=AB$，而不是没计算一次$\tilde{C}=AB$就加到$C$上。$\check{B}_p$没有被重用，因此没有pack。此时$B_j$最多需要$n_r$个TLB entry，$B_{temp}, C_j, C_{j+1}$各需要一个，那么剩余留给$\tilde{A}$的TLB数目还是$T_{\tilde{A}}=T-(n_r+3)$
+
+## 5.3 Implementing gepp with gepb
+![Fig10](/assets/Anatomy-of-High-Performance-Matrix-Multiplication/Fig10.png)
+
+$A$做了pack和转置来保证连续访问，在GEPB里$B$做pack而且保存在L2 cache，因此这里我们需要最大化$T_{\tilde{B}}$，同理$T_{\tilde{A}}$的上限是$T-(n_r+3)$
+
+## 5.4 Implementing gemp with gepb
+![Fig11](/assets/Anatomy-of-High-Performance-Matrix-Multiplication/Fig11.png)
+
+用一个临时的$\tilde{C}$来累加$\tilde{C}=(AB)^T$，$\tilde{B}$保留在L2 cache里。同样因此这里我们需要最大化$T_{\tilde{B}}$，$T_{\tilde{A}}$的上限是$T-(n_r+3)$
+
+## 5.5 Implementing gepm and gemp with gepdot
+$C$保留在L2 cache里，每次乘完$A$的一些列和$B$的一些行后累加到$C$上。下面会介绍这种方法不优。
+
+## 5.6 Discussion
+这里我们比较各种实现方法的优劣，**结论是gebp实现gepp在列主序情况下最优**。
+首先排除gepdot实现。考量L2 cache带宽，gepdot实现中将$C$保留在L2 cache里，然后从内存里加载$A$和$B$，L2 cache和寄存器时间的带宽是gebp实现的两倍，因此gepdot实现是最差的一种实现。**这个结论前提假设是，$A$和$B$的分片$A_j$和$B_j$都太大了，无法保留在L2 cache里。**
+比较gebp实现gepp Fig.8和gebp实现gepp Fig.9，主要区别在于前者pack $B$而从内存加载$C$，后者从内存加载$B$，将计算之后的临时$\tilde{C}$放在buffer，再unpack $\tilde{C}$并加到$C$里。
+- gebp实现gepp方法，隐藏从内存读写$C$的开销，而暴露了pack $B$的开销
+- gebp实现gepp方法，隐藏从内存读$B$的开销，而暴露unpack $C$的开销
+
+预期unpack $C$是比pack $B$更复杂的操作，因此gebp实现gepp比gebp实现gepp更优。同理gepb实现gepp也比gepb实现gemp更优。
+
+最后比较gebp实现gepp和gepb实现gepp，如果矩阵是按照列主序排列的，那么更合适按列分解矩阵，基于此那么gebp实现gepp优于gepb实现gepp。
+
+
+
+# 6. MORE DETAILS YET
+我们只关注最优的gebp实现gepp方法。
+$C_{m_c,n}+=A_{m_c,k_c}B_{k_c,n}$，其中
+
+- $A$是block，$A\in \Bbb{R}^{m_c\times k_c}$
+- $B$是panel，$B\in \Bbb{R}^{k_c\times n}$
+- $C$也是panel，$C\in \Bbb{R}^{m_c\times n}$
+![](/assets/Anatomy-of-High-Performance-Matrix-Multiplication/Fig0-1.png)
+
+## 6.1 Register blocking
+考虑Fig. 8中的$C_{aux}:=\tilde{A}B$，其中$\tilde{A}$和$B$分别在L2和L1 cache。如下图所示，$C_{aux}$分解成$m_r\times n_r$的子矩阵加载到寄存器里计算。
+![](/assets/Anatomy-of-High-Performance-Matrix-Multiplication/Fig0-2.png)
+
+这意味着，计算$C_{j}$的时候不需要子矩阵在L1甚至L2 cache，基于$m_rn_r$ memops 内存操作执行$2m_rn_rk_c$ flops计算量，这里$k_c$选的相对较大。
+更详细地描述如何将$A$ pack成$\tilde{A}$，在我们的实现里，$A$的尺寸是$m_c\times k_c$，进一步分解成内存连续的$m_r\times k_c$子矩阵，每个子矩阵自身是列主序排列的，那么$C_{aux}:=\tilde{A}B$计算的时候，访问$\tilde{A}$时就是内存连续的了。还有一种实现是将$A$的转置保存成$\tilde{A}$，这种做法复杂度稍微高一些。
+
+## 6.2 Choosing $m_r\times  n_r$
+选择 $m_r\times  n_r$时有如下考量
+- 一般**可用寄存器的一半用于存储$C$分解成的$m_r\times n_r$子矩阵**，留剩余寄存器来prefetching $\tilde{A}$和$\tilde{B}$
+- $m_r\approx n_r$时，加载的开销平摊到计算量上时，即计算密度最优。
+- 如4.2.1章节提到，从L2 cache prefetching $\tilde{A}$到寄存器的开销，不应该比之前的计算开销更长，最理想的是$n_r \geq \frac{R_{comp}}{2R_{load}}$。$R_{comp}=/frac{flops}{cycle}$是CPU浮点运算操作速度，$R_{load}$是L2 cache加载到寄存器的速度
+
+寄存器数目不够会限制gebp_opt1的性能。
+
+## 6.3 Choosing $k_c$
+每加载一个$m_r\times n_r$的$C$子矩阵，都需要和$m_r\times k_c$的$A$子矩阵相乘，为了最大化平摊掉加载开销，$k_c$必须尽量大。但同时$k_c$受以下因素制约
+- $B_j$会重用很多次，因此最好保留在L1 cache里。同时**set associativity and cache replacement policy**限制了$B_j$能够占用多少L1 cache。一般，**$k_cn_r$个浮点数应该占用少于一般的L1 cache**，才能在加载$\tilde{A}$和$C_{aux}$时将$B_j$逐出cache
+- $\tilde{A}$的尺寸是$m_c\times k_c$应该占据一定比例的L2 cache
+
+**经验做法，$k_c$个双精度浮点数占据半页，这样得到的值在各种平台都满足。**
+
+## 6.4 Choosing $m_c$
+ 前面已经讨论了尺寸是$m_c\times k_c$的$\tilde{A}$应该
+ - 能被索引TLB
+ - 小于L2 cache
+
+事实上还有来自于**set associativity and cache replacement policy**的限制。
+**经验做法，$m_c$选择前面限制条件的一半**
 
 
 
@@ -130,6 +248,7 @@ TLB的存在意味着我们需要满足额外的假设
 
 
 # References
+
 [^1]: Gunnels, J. A., Gustavson, F. G., Henry, G. M., and van de Geijn, R. A. 2001. FLAME: Formal linear algebra methods environment. ACM Transactions on Mathematical Software 27, 4 (December), 422–455.
 [^2]: Agarwal, R., Gustavson, F., and Zubair, M. 1994. Exploiting functional parallelism of POWER2 to design high-performance numerical algorithms. IBM Journal of Research and Development 38, 5 (Sept.).
 [^3]: Whaley, R. C., Petitet, A., and Dongarra, J. J. 2001. Automated empirical optimization of
